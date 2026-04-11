@@ -4,60 +4,397 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BargainBuddy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg:       #080808;
+      --bg2:      #111111;
+      --bg3:      #1a1a1a;
+      --border:   #222222;
+      --green:    #00FF88;
+      --green-dim:#00cc6a;
+      --orange:   #FF6B35;
+      --gold:     #FFD60A;
+      --red:      #FF3B3B;
+      --text:     #FFFFFF;
+      --muted:    #666666;
+      --muted2:   #444444;
+      --radius-lg:20px;
+      --radius-md:14px;
+      --radius-sm:10px;
+      --glow-green: 0 0 24px rgba(0,255,136,0.35);
+      --glow-orange: 0 0 24px rgba(255,107,53,0.35);
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      background: #0f0f0f; color: #ffffff;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      min-height: 100vh; max-width: 480px; margin: 0 auto; padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Manrope', sans-serif;
+      min-height: 100vh;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+      overflow-x: hidden;
     }
-    .screen { width: 100%; }
+
+    /* ── Typography ── */
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 26px;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    h3 { font-family: 'Syne', sans-serif; font-weight: 700; }
+    label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    /* ── Screen ── */
+    .screen { width: 100%; animation: fadeUp 0.35s ease both; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+    .card-accent {
+      background: var(--bg2);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      margin-bottom: 14px;
+      border: 1px solid transparent;
+      background-clip: padding-box;
+      position: relative;
+    }
+    .card-accent::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: calc(var(--radius-lg) + 1px);
+      background: linear-gradient(135deg, var(--green) 0%, var(--orange) 100%);
+      z-index: -1;
+    }
+
+    /* ── Inputs ── */
+    input, select {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      font-size: 15px;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 500;
+      margin-top: 0;
+      outline: none;
+      transition: border-color 200ms, box-shadow 200ms;
+      -webkit-appearance: none;
+    }
+    input:focus, select:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(0,255,136,0.12);
+    }
+    select { cursor: pointer; }
+
+    /* ── Buttons ── */
     button {
-      min-height: 48px; padding: 12px 24px; border-radius: 12px;
-      border: none; font-size: 16px; cursor: pointer; width: 100%; margin-top: 12px;
+      min-height: 52px;
+      padding: 14px 24px;
+      border-radius: var(--radius-md);
+      border: none;
+      font-size: 15px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 10px;
+      transition: all 200ms ease;
     }
-    .btn-primary { background: #22c55e; color: #000; font-weight: 600; }
-    .btn-secondary { background: #1f1f1f; color: #fff; border: 1px solid #333; }
-    .btn-danger { background: #ef4444; color: #fff; }
-    .tone-group { display: flex; gap: 8px; margin-top: 8px; }
-    .tone-btn { background: #1f1f1f; border: 1px solid #333; color: #aaa; flex: 1; }
-    .tone-btn.active { background: #22c55e; color: #000; border-color: #22c55e; font-weight: 600; }
+    .btn-primary {
+      background: var(--green);
+      color: #000;
+      box-shadow: var(--glow-green);
+    }
+    .btn-primary:hover {
+      background: #1aff99;
+      box-shadow: 0 0 36px rgba(0,255,136,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    .btn-secondary {
+      background: var(--bg3);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: #444; background: #1f1f1f; }
+
+    .btn-danger {
+      background: rgba(255,59,59,0.12);
+      color: var(--red);
+      border: 1px solid rgba(255,59,59,0.3);
+    }
+    .btn-danger:hover { background: rgba(255,59,59,0.2); }
+
+    /* ── Tone Buttons ── */
+    .tone-group { display: flex; gap: 8px; margin-top: 10px; }
+    .tone-btn {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      flex: 1;
+      font-size: 13px;
+      min-height: 44px;
+      font-family: 'Manrope', sans-serif;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+    }
+    .tone-btn.active {
+      background: rgba(0,255,136,0.1);
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    /* ── Location Pill ── */
     .location-pill {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: #1f1f1f; border: 1px solid #333; border-radius: 20px;
-      padding: 6px 12px; font-size: 13px; color: #aaa; margin-bottom: 16px; cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 6px 14px 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 20px;
+      cursor: pointer;
+      transition: border-color 200ms, color 200ms;
     }
+    .location-pill:hover { border-color: #444; color: #999; }
+    .location-pill svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+    /* ── Live Dot ── */
     .live-dot {
-      width: 10px; height: 10px; border-radius: 50%; background: #ef4444;
-      animation: pulse 1.2s ease-in-out infinite; display: inline-block; margin-right: 6px;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      display: inline-block;
+      margin-right: 6px;
+      animation: pulse 1.2s ease-in-out infinite;
+      box-shadow: 0 0 8px var(--red);
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.8); }
+      50%       { opacity: 0.5; transform: scale(0.75); }
     }
+
+    /* ── Transcript ── */
     .transcript {
-      background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px;
-      padding: 16px; height: 280px; overflow-y: auto;
-      font-size: 14px; line-height: 1.6; color: #ddd; margin-top: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      height: 260px;
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.7;
+      color: #aaa;
+      margin-top: 14px;
+      font-family: 'Manrope', sans-serif;
     }
-    .badge-high { background: #3f1515; color: #ef4444; border-radius: 8px; padding: 4px 10px; font-size: 12px; }
-    .badge-low  { background: #0f2b1a; color: #22c55e; border-radius: 8px; padding: 4px 10px; font-size: 12px; }
-    .badge-medium { background: #2b2010; color: #f59e0b; border-radius: 8px; padding: 4px 10px; font-size: 12px; }
-    .card {
-      background: #1a1a1a; border: 1px solid #2a2a2a;
-      border-radius: 16px; padding: 20px; margin-bottom: 16px;
+    .transcript::-webkit-scrollbar { width: 4px; }
+    .transcript::-webkit-scrollbar-track { background: transparent; }
+    .transcript::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ── Badges ── */
+    .badge-high   { background: rgba(255,59,59,0.12); color: #FF6B6B; border: 1px solid rgba(255,59,59,0.25); border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .badge-medium { background: rgba(255,166,0,0.12); color: #FFAA00; border: 1px solid rgba(255,166,0,0.25); border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+    .badge-low    { background: rgba(0,255,136,0.10); color: var(--green); border: 1px solid rgba(0,255,136,0.25); border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+
+    /* ── Preview ── */
+    .preview-img {
+      width: 100%;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      margin-bottom: 14px;
+      display: block;
     }
-    input, select {
-      width: 100%; background: #1a1a1a; border: 1px solid #333;
-      color: #fff; border-radius: 10px; padding: 12px 16px; font-size: 16px; margin-top: 8px;
+
+    /* ── Camera Viewfinder ── */
+    #camera-viewfinder {
+      width: 100%; aspect-ratio: 3/4;
+      background: #000; border-radius: var(--radius-lg);
+      object-fit: cover; margin-bottom: 14px;
+      border: 1px solid var(--border);
     }
-    #camera-viewfinder { width: 100%; aspect-ratio: 3/4; background: #000; border-radius: 16px; object-fit: cover; margin-bottom: 16px; }
-    .preview-img { width: 100%; border-radius: 16px; margin-bottom: 16px; }
+
+    /* ── Upload Area ── */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 200ms, background 200ms;
+      margin-bottom: 14px;
+    }
+    .upload-area:hover { border-color: var(--green); background: rgba(0,255,136,0.04); }
+
+    /* ── Modal ── */
     .modal {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
     }
-    .modal-content { background: #1a1a1a; padding: 20px; border-radius: 16px; width: 90%; max-width: 400px; }
+    .modal-content {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      padding: 24px;
+      border-radius: var(--radius-lg);
+      width: 92%;
+      max-width: 400px;
+    }
+    .modal-content h3 { margin-bottom: 16px; font-size: 18px; }
+
+    /* ── Logo ── */
+    .logo-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 32px;
+      margin-top: 8px;
+    }
+    .logo-wrap img {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      border-radius: 20px;
+      margin-bottom: 12px;
+    }
+    .logo-name {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 28px;
+      letter-spacing: -0.03em;
+      background: linear-gradient(90deg, var(--green), var(--orange));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo-tagline {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+      margin-top: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* ── Divider ── */
+    .divider { border: 0; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    /* ── Savings number ── */
+    .price-hero {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      color: var(--green);
+      line-height: 1;
+    }
+    .price-strikethrough {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      color: var(--muted2);
+      text-decoration: line-through;
+      text-decoration-color: var(--red);
+    }
+
+    /* ── Tag label ── */
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Mobile — safe areas, touch, zoom prevention ── */
+    @media (max-width: 480px) {
+      body {
+        padding: 20px 16px calc(32px + env(safe-area-inset-bottom));
+        /* Prevent iOS bounce scroll on body */
+        overscroll-behavior-y: none;
+      }
+      h1 { font-size: 22px; }
+      .logo-wrap img { width: 68px; height: 68px; }
+      .logo-name { font-size: 24px; }
+      /* Larger touch targets on small screens */
+      button { min-height: 52px; font-size: 15px; }
+      .tone-btn { min-height: 46px; }
+      /* Keep font-size 16px+ on inputs to prevent iOS auto-zoom */
+      input, select { font-size: 16px; }
+      /* Tighter card padding on very small screens */
+      .card, .card-accent { padding: 16px; }
+      /* Price hero scales down */
+      .price-hero[style*="font-size:64px"] { font-size: 52px !important; }
+      .price-hero[style*="font-size:48px"] { font-size: 40px !important; }
+      /* Upload area compact */
+      .upload-area { padding: 28px 16px; }
+      /* Transcript height on mobile */
+      .transcript { height: 220px; }
+    }
+
+    /* ── Very small phones ── */
+    @media (max-width: 360px) {
+      body { padding-left: 12px; padding-right: 12px; }
+      h1 { font-size: 20px; }
+      .logo-name { font-size: 22px; }
+    }
+
+    /* ── iOS standalone / PWA mode ── */
+    @supports (-webkit-touch-callout: none) {
+      body { padding-top: calc(20px + env(safe-area-inset-top)); }
+    }
+
+    /* ── Reduced motion ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, .screen, .live-dot, .spinner { animation: none !important; transition: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -71,9 +408,13 @@
   <div id="location-modal" class="modal" style="display:none;">
     <div class="modal-content">
       <h3>Change Location</h3>
+      <label>City, Country</label>
       <input type="text" id="modal-location-input" placeholder="Mumbai, India">
-      <select id="modal-language-select"></select>
-      <button id="modal-update-btn" class="btn-primary">Update</button>
+      <div style="margin-top:14px;">
+        <label>Merchant Language</label>
+        <select id="modal-language-select"></select>
+      </div>
+      <button id="modal-update-btn" class="btn-primary" style="margin-top:16px;">Update</button>
       <button id="modal-close-btn" class="btn-secondary">Cancel</button>
     </div>
   </div>
@@ -92,6 +433,7 @@
     imageBase64: null,
     imageMimeType: null,
     productDescription: '',
+    merchantAskedPrice: null,   // raw string e.g. "600 INR" or "600"
     maxPrice: null,
     tone: 'friendly',
     voice: 'Puck',
@@ -111,7 +453,12 @@
   // ─── SCREEN ROUTER ────────────────────────────────────────────────────────
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(function(s) { s.style.display = 'none'; });
-    document.getElementById('screen-' + name).style.display = 'block';
+    var el = document.getElementById('screen-' + name);
+    el.style.display = 'block';
+    // Re-trigger animation
+    el.classList.remove('screen');
+    void el.offsetWidth;
+    el.classList.add('screen');
     switch (name) {
       case 'location':    initLocationScreen();    break;
       case 'capture':     initCaptureScreen();     break;
@@ -126,7 +473,10 @@
     if (!state.location) return;
     var pill = document.createElement('div');
     pill.className = 'location-pill';
-    pill.innerHTML = '📍 ' + (state.location.city || state.location.country) + ' · ' + state.detectedLanguage + ' ✏️';
+    pill.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>' +
+      (state.location.city || state.location.country) + ' · ' + state.detectedLanguage +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:2px;opacity:0.5;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
     pill.onclick = openLocationModal;
     container.prepend(pill);
   }
@@ -170,10 +520,15 @@
     var apiKey = (window.CONFIG || CONFIG).GEMINI_API_KEY;
     if (!apiKey || apiKey.includes('PASTE')) throw new Error('Invalid API Key');
 
+    var merchantPriceNote = state.merchantAskedPrice
+      ? 'IMPORTANT: The user has told you the merchant verbally quoted "' + state.merchantAskedPrice + '". Use this as the "quoted_price" value. This overrides anything you read from the image.\n\n'
+      : '';
+
     var prompt = 'You are an expert local street-market appraiser in ' + location.city + ', ' + location.country + '.\n' +
       'The user describes this item as: "' + productDescription + '"\n\n' +
-      'STEP 1 — Read the price tag: Look carefully at the image for any visible price tag, price sticker, handwritten price, or label showing a price. If you can see a price in the image, extract it exactly as written and use it as "quoted_price".\n\n' +
-      'STEP 2 — If no price is visible: Estimate the price a merchant in ' + location.city + ' would first quote to a foreign tourist for this specific type of item.\n\n' +
+      merchantPriceNote +
+      'STEP 1 — Read the price tag: ' + (state.merchantAskedPrice ? 'The merchant quoted "' + state.merchantAskedPrice + '" — use this as quoted_price.' : 'Look carefully at the image for any visible price tag, price sticker, handwritten price, or label. If visible, extract it exactly as written.') + '\n\n' +
+      'STEP 2 — If no price is known: Estimate the price a merchant in ' + location.city + ' would first quote to a foreign tourist for this specific type of item.\n\n'
       'STEP 3 — Determine the fair price: Based on what locals actually pay (not the tourist ask), provide "suggested_usd" as the fair market value in USD using current realistic exchange rates for ' + location.country + '.\n\n' +
       'Return ONLY valid JSON with no markdown or backticks:\n' +
       '{\n' +
@@ -275,7 +630,7 @@
         console.error('WebSocket error:', e);
         if (!sessionEnded) {
           sessionEnded = true;
-          onTranscript('<span style="color:#ef4444;">Connection error — check API key.</span>');
+          onTranscript('<span style="color:var(--red)">Connection error — check API key.</span>');
           cleanup(); reject(new Error('WebSocket connection failed'));
         }
       };
@@ -285,7 +640,7 @@
         if (!sessionEnded) {
           sessionEnded = true;
           var detail = e.reason ? ': ' + e.reason : ' (code ' + e.code + ')';
-          onTranscript('<span style="color:#f59e0b;">Session disconnected' + detail + '.</span>');
+          onTranscript('<span style="color:#FFAA00">Session disconnected' + detail + '.</span>');
           cleanup(); reject(new Error('WebSocket closed: ' + (e.reason || e.code)));
         }
       };
@@ -378,11 +733,23 @@
   function initLocationScreen() {
     var container = document.getElementById('screen-location');
     container.innerHTML =
-      '<h1>📍 Where are you shopping?</h1>' +
-      '<input type="text" id="location-input" placeholder="Bangkok, Thailand">' +
-      '<h1 style="margin-top:20px;">🗣️ Merchant language:</h1>' +
-      '<select id="language-select"></select>' +
-      '<button id="start-btn" class="btn-primary">Let\'s Shop! →</button>';
+      '<div class="logo-wrap">' +
+        '<img src="bargainbuddy.png" alt="BargainBuddy logo">' +
+        '<div class="logo-name">BargainBuddy</div>' +
+        '<div class="logo-tagline">AI-powered market negotiator</div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<label>Where are you shopping?</label>' +
+        '<input type="text" id="location-input" placeholder="Mumbai, India" style="margin-top:0;">' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<label>Merchant language</label>' +
+        '<select id="language-select"></select>' +
+      '</div>' +
+
+      '<button id="start-btn" class="btn-primary" style="margin-top:8px;">Let\'s Shop →</button>';
 
     var input = document.getElementById('location-input');
     var select = document.getElementById('language-select');
@@ -445,29 +812,50 @@
     var container = document.getElementById('screen-capture');
     container.innerHTML =
       '<div id="pill-container"></div>' +
-      '<h1>Upload Product Photo</h1>' +
-      '<p style="color:#aaa;font-size:14px;margin-bottom:20px;">Please upload a photo of the item you\'re looking at.</p>' +
-      '<div class="card"><label>Describe the product briefly</label>' +
-      '<input type="text" id="product-desc-input" placeholder="e.g. Blue silk scarf, wooden elephant statue"></div>' +
-      '<button id="upload-btn" class="btn-primary">📁 Choose Photo</button>' +
+      '<h1 style="margin-bottom:6px;">Snap the item</h1>' +
+      '<p style="color:var(--muted);font-size:14px;margin-bottom:20px;line-height:1.5;">Upload a photo — BargainBuddy figures out what it\'s actually worth.</p>' +
+
+      // ── Upload area (shown first)
+      '<div class="upload-area" id="upload-area-click">' +
+        '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 12px;display:block;"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>' +
+        '<p style="font-size:14px;font-weight:600;color:var(--muted);margin-bottom:4px;">Tap to upload photo</p>' +
+        '<p style="font-size:12px;color:var(--muted2);">JPG, PNG, HEIC supported</p>' +
+      '</div>' +
       '<input type="file" id="upload-input" accept="image/*" style="display:none;">' +
-      '<div id="preview-area" style="display:none;margin-top:20px;">' +
-      '<img id="capture-preview" class="preview-img">' +
-      '<button id="looks-good-btn" class="btn-primary">Analyze This →</button>' +
-      '<button id="retake-btn" class="btn-secondary">Remove Photo</button>' +
-      '</div>';
+
+      // ── Preview (hidden until photo chosen)
+      '<div id="preview-area" style="display:none;">' +
+        '<img id="capture-preview" class="preview-img">' +
+        '<button id="retake-btn" class="btn-secondary" style="margin-bottom:14px;">Remove Photo</button>' +
+      '</div>' +
+
+      // ── Optional fields (always visible)
+      '<div class="card" style="margin-top:4px;">' +
+        '<label>Describe the product <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>' +
+        '<input type="text" id="product-desc-input" placeholder="e.g. Blue silk scarf, wooden elephant statue" style="margin-top:0;">' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<label>Merchant\'s asking price <span style="color:var(--muted2);font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></label>' +
+        '<input type="text" id="merchant-price-input" placeholder="e.g. 600 INR or $8" style="margin-top:0;"' +
+          (state.merchantAskedPrice ? ' value="' + state.merchantAskedPrice + '"' : '') + '>' +
+        '<p style="font-size:11px;color:var(--muted2);margin-top:8px;line-height:1.5;">Enter what the merchant said — AI will use this as the starting price.</p>' +
+      '</div>' +
+
+      '<button id="looks-good-btn" class="btn-primary">Analyze This →</button>';
 
     renderLocationPill(document.getElementById('pill-container'));
 
-    var uploadBtn   = document.getElementById('upload-btn');
-    var uploadInput = document.getElementById('upload-input');
-    var descInput   = document.getElementById('product-desc-input');
-    var previewArea = document.getElementById('preview-area');
-    var previewImg  = document.getElementById('capture-preview');
+    var uploadInput  = document.getElementById('upload-input');
+    var descInput    = document.getElementById('product-desc-input');
+    var priceInput   = document.getElementById('merchant-price-input');
+    var previewArea  = document.getElementById('preview-area');
+    var previewImg   = document.getElementById('capture-preview');
+    var uploadArea   = document.getElementById('upload-area-click');
 
     if (state.productDescription) descInput.value = state.productDescription;
 
-    uploadBtn.onclick = function() { uploadInput.click(); };
+    uploadArea.onclick = function() { uploadInput.click(); };
     uploadInput.onchange = function(e) {
       var file = e.target.files[0];
       if (!file) return;
@@ -481,21 +869,20 @@
       state.imageBase64 = base64.split(',')[1];
       previewImg.src = base64;
       previewArea.style.display = 'block';
-      uploadBtn.style.display = 'none';
+      uploadArea.style.display = 'none';
     }
 
     document.getElementById('retake-btn').onclick = function() {
       state.imageBase64 = null;
       previewArea.style.display = 'none';
-      uploadBtn.style.display = 'block';
+      uploadArea.style.display = 'block';
       uploadInput.value = '';
     };
 
     document.getElementById('looks-good-btn').onclick = function() {
-      var desc = descInput.value.trim();
-      if (!desc) { alert('Please provide a brief description of the product.'); return; }
       if (!state.imageBase64) { alert('Please upload a photo first.'); return; }
-      state.productDescription = desc;
+      state.productDescription = descInput.value.trim() || 'item in photo';
+      state.merchantAskedPrice = priceInput.value.trim() || null;
       showScreen('analysis');
     };
   }
@@ -505,8 +892,10 @@
     var container = document.getElementById('screen-analysis');
     container.innerHTML =
       '<div id="pill-container-analysis"></div>' +
-      '<div id="loading-area" style="text-align:center;padding:40px;">' +
-      '<div class="live-dot"></div> Identifying "' + state.productDescription + '"...' +
+      '<div id="loading-area" style="text-align:center;padding:60px 0;">' +
+        '<div class="spinner"></div>' +
+        '<p style="font-family:Syne,sans-serif;font-weight:700;font-size:16px;margin-bottom:6px;">Reading the market...</p>' +
+        '<p style="color:var(--muted);font-size:13px;">"' + state.productDescription + '"</p>' +
       '</div>' +
       '<div id="result-area" style="display:none;"></div>';
 
@@ -521,12 +910,12 @@
         console.error('Analysis error (falling back):', e);
         var fallback = {
           product_description: state.productDescription,
-          quoted_price: 'Market Average', quoted_currency: 'Local',
-          quoted_price_usd: 15.00, suggested_usd: 15.00,
-          suggested_local: 'See locally',
-          local_context: 'Estimating price for ' + state.productDescription + ' in ' + state.location.country + '.',
-          reasoning: 'AI analysis was limited, showing market averages.',
-          negotiation_floor: 10.00, tourist_markup: 'medium'
+          quoted_price: null, quoted_currency: null,
+          quoted_price_usd: null, suggested_usd: null,
+          suggested_local: null,
+          local_context: '',
+          reasoning: 'AI analysis was limited.',
+          negotiation_floor: null, tourist_markup: 'medium'
         };
         state.analysis = fallback;
         displayAnalysisResult(fallback, true);
@@ -534,40 +923,77 @@
   }
 
   function displayAnalysisResult(res, isFallback) {
-    var badgeClass = res.tourist_markup === 'high' ? 'badge-high' : (res.tourist_markup === 'medium' ? 'badge-medium' : 'badge-low');
-    var badgeEmoji = res.tourist_markup === 'high' ? '🔴' : (res.tourist_markup === 'medium' ? '🟡' : '🟢');
-    var savingsPct = (res.quoted_price_usd && res.suggested_usd)
-      ? Math.round((1 - res.suggested_usd / res.quoted_price_usd) * 100) : null;
-    var savedUsd = (res.quoted_price_usd && res.suggested_usd)
-      ? (res.quoted_price_usd - res.suggested_usd).toFixed(2) : null;
+    // Safely coerce every field — never let undefined reach innerHTML
+    // Always fall back to what the user manually entered on the capture screen
+    var quotedPrice    = res.quoted_price    || state.merchantAskedPrice || null;
+    var quotedPriceUsd = res.quoted_price_usd != null ? Number(res.quoted_price_usd) : null;
+    var suggestedLocal = res.suggested_local || null;
+    var suggestedUsd   = res.suggested_usd   != null ? Number(res.suggested_usd)   : null;
+    var productDesc    = res.product_description || state.productDescription || '';
+    var markup         = res.tourist_markup || null;
+    // If we have the merchant price from user input, this isn't really a fallback failure
+    var trulyNoData    = !quotedPrice && !suggestedLocal && !suggestedUsd;
+
+    var badgeClass  = markup === 'high' ? 'badge-high' : (markup === 'medium' ? 'badge-medium' : 'badge-low');
+    var markupLabel = (markup || 'unknown') + ' markup';
+
+    var savingsPct = (quotedPriceUsd && suggestedUsd)
+      ? Math.round((1 - suggestedUsd / quotedPriceUsd) * 100) : null;
+    var savedUsd   = (quotedPriceUsd && suggestedUsd)
+      ? (quotedPriceUsd - suggestedUsd).toFixed(2) : null;
+
+    // Render "local · $X USD", gracefully handling any missing value
+    function pricePair(localStr, usdNum, strikethrough, color) {
+      var parts = [];
+      if (localStr != null && String(localStr).trim()) parts.push(String(localStr).trim());
+      if (usdNum  != null && !isNaN(usdNum))           parts.push('$' + usdNum + ' USD');
+      var combined = parts.length ? parts.join('  ·  ') : '—';
+      var style = 'font-family:Manrope,sans-serif;font-weight:700;font-size:26px;line-height:1.2;color:' + (color || 'inherit') + ';';
+      if (strikethrough) style += 'text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px;';
+      return '<span style="' + style + '">' + combined + '</span>';
+    }
 
     document.getElementById('loading-area').style.display = 'none';
     var area = document.getElementById('result-area');
+
     area.innerHTML =
-      (isFallback ? '<p style="color:#f59e0b;font-size:12px;margin-bottom:8px;text-align:center;">⚠️ Using estimated market price</p>' : '') +
-      '<div class="card" style="padding:28px 24px;text-align:center;">' +
-        '<p style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;">Offer this price</p>' +
-        '<p style="font-size:60px;font-weight:800;color:#22c55e;line-height:1;margin:0;">$' + res.suggested_usd + '</p>' +
-        '<p style="font-size:15px;color:#3d9e60;margin-top:6px;">' + res.suggested_local + '</p>' +
-        '<div style="border-top:1px solid #1e1e1e;margin:20px 0;"></div>' +
-        '<div style="display:flex;justify-content:space-around;align-items:center;">' +
-          '<div>' +
-            '<p style="font-size:11px;color:#555;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">They ask</p>' +
-            '<p style="font-size:20px;font-weight:600;color:#666;text-decoration:line-through;">$' + (res.quoted_price_usd || '?') + '</p>' +
-            '<p style="font-size:11px;color:#444;">' + res.quoted_price + '</p>' +
-          '</div>' +
-          '<div style="text-align:center;">' +
-            (savingsPct ? '<p style="font-size:32px;font-weight:800;color:#22c55e;line-height:1;">−' + savingsPct + '%</p>' +
-              '<p style="font-size:12px;color:#3d9e60;margin-top:2px;">you save $' + savedUsd + '</p>' : '') +
-          '</div>' +
-          '<div>' +
-            '<p style="font-size:11px;color:#3d9e60;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;">Markup</p>' +
-            '<span class="' + badgeClass + '" style="font-size:12px;">' + badgeEmoji + ' ' + res.tourist_markup + '</span>' +
+      (trulyNoData ? '<p style="color:#FFAA00;font-size:12px;margin-bottom:16px;text-align:center;font-weight:600;letter-spacing:0.05em;">⚠ Could not read price — set amounts manually below</p>' : '') +
+
+      '<div class="card" style="padding:0;overflow:hidden;">' +
+
+        // ── Merchant's price
+        '<div style="padding:18px 20px;border-bottom:1px solid var(--border);">' +
+          '<p style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Merchant\'s price</p>' +
+          pricePair(quotedPrice, quotedPriceUsd, true, 'var(--muted2)') +
+          '<div style="margin-top:8px;">' +
+            '<span class="' + badgeClass + '">' + markupLabel + '</span>' +
           '</div>' +
         '</div>' +
+
+        // ── Savings ribbon
+        (savingsPct ?
+          '<div style="background:rgba(0,255,136,0.06);border-bottom:1px solid rgba(0,255,136,0.15);padding:9px 20px;display:flex;align-items:center;justify-content:space-between;">' +
+            '<span style="font-size:12px;color:var(--green-dim);font-weight:600;">You save</span>' +
+            '<span style="font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:var(--green);">$' + savedUsd + ' &nbsp;·&nbsp; −' + savingsPct + '%</span>' +
+          '</div>'
+        : '') +
+
+        // ── Fair price
+        '<div style="padding:18px 20px;">' +
+          '<p style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">Offer this price</p>' +
+          pricePair(suggestedLocal, suggestedUsd, false, 'var(--green)') +
+          (!suggestedLocal && !suggestedUsd ? '<p style="font-size:11px;color:var(--muted);margin-top:6px;">Set your budget on the next screen</p>' : '') +
+        '</div>' +
+
       '</div>' +
-      '<p style="font-size:12px;color:#444;text-align:center;margin:10px 0 16px;padding:0 16px;' +
-        'overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' + res.product_description + '</p>' +
+
+      (productDesc ?
+        '<p style="font-size:12px;color:var(--muted2);line-height:1.55;margin:10px 4px 20px;' +
+          'overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">' +
+          productDesc +
+        '</p>'
+      : '') +
+
       '<button id="set-budget-btn" class="btn-primary">Set My Budget →</button>';
 
     area.style.display = 'block';
@@ -577,28 +1003,73 @@
   // ─── SCREEN: PREFERENCES ─────────────────────────────────────────────────
   function initPreferencesScreen() {
     var container = document.getElementById('screen-preferences');
-    var suggestedUsd = (state.analysis && state.analysis.suggested_usd) ? state.analysis.suggested_usd : '';
+    var a = state.analysis || {};
+    var suggestedUsd = a.suggested_usd || '';
+    // Default walk-away: the AI's suggested price (what they should pay)
+    var defaultMax = state.maxPrice || suggestedUsd;
+
+    // Helper: build a combined "local · $X USD" string
+    function fmtBoth(localStr, usdNum) {
+      var parts = [];
+      if (localStr) parts.push(localStr);
+      if (usdNum != null) parts.push('$' + usdNum + ' USD');
+      return parts.length ? parts.join('  ·  ') : '—';
+    }
+
+    // Price context card
+    var priceContextCard =
+      '<div class="card" style="padding:0;overflow:hidden;margin-bottom:14px;">' +
+        // Merchant's price row
+        '<div style="padding:16px 20px;border-bottom:1px solid var(--border);">' +
+          '<p style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">Merchant asks</p>' +
+          '<p style="font-family:Manrope,sans-serif;font-weight:700;font-size:20px;color:#777;line-height:1.2;">' +
+            fmtBoth(a.quoted_price, a.quoted_price_usd) +
+          '</p>' +
+        '</div>' +
+        // AI suggested row
+        '<div style="padding:16px 20px;background:rgba(0,255,136,0.04);">' +
+          '<p style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:6px;">Fair price</p>' +
+          '<p style="font-family:Manrope,sans-serif;font-weight:700;font-size:20px;color:var(--green);line-height:1.2;">' +
+            fmtBoth(a.suggested_local, a.suggested_usd) +
+          '</p>' +
+        '</div>' +
+      '</div>';
+
     container.innerHTML =
       '<div id="pill-container-prefs"></div>' +
-      '<h1>Negotiation Rules</h1>' +
-      '<div class="card"><label>Walk away if price stays above</label>' +
-      '<div style="display:flex;align-items:center;gap:8px;"><span>$</span>' +
-      '<input type="number" id="max-price" step="0.50" value="' + (state.maxPrice || suggestedUsd) + '"></div></div>' +
-      '<div class="card"><label>Negotiation Tone</label>' +
-      '<div class="tone-group">' +
-        '<button class="tone-btn ' + (state.tone === 'aggressive' ? 'active' : '') + '" data-tone="aggressive">Aggressive</button>' +
-        '<button class="tone-btn ' + (state.tone === 'friendly' ? 'active' : '') + '" data-tone="friendly">Friendly</button>' +
-        '<button class="tone-btn ' + (state.tone === 'neutral' ? 'active' : '') + '" data-tone="neutral">Neutral</button>' +
-      '</div></div>' +
-      '<div class="card"><label>AI Voice</label>' +
-      '<select id="voice-select">' +
-        '<option value="Puck">Puck (Default)</option>' +
-        '<option value="Charon">Charon</option>' +
-        '<option value="Kore">Kore</option>' +
-        '<option value="Fenrir">Fenrir</option>' +
-        '<option value="Aoede">Aoede</option>' +
-      '</select></div>' +
-      '<p style="font-size:13px;color:#aaa;text-align:center;">🗣️ AI will negotiate in: <b>' + state.detectedLanguage + '</b></p>' +
+      '<h1 style="margin-bottom:16px;">Set the rules</h1>' +
+
+      priceContextCard +
+
+      '<div class="card">' +
+        '<label>Walk away if price stays above</label>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:0;">' +
+          '<span style="font-size:18px;font-weight:700;color:var(--muted);">$</span>' +
+          '<input type="number" id="max-price" step="0.50" value="' + defaultMax + '" style="flex:1;">' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<label>Negotiation tone</label>' +
+        '<div class="tone-group">' +
+          '<button class="tone-btn ' + (state.tone === 'aggressive' ? 'active' : '') + '" data-tone="aggressive">Aggressive</button>' +
+          '<button class="tone-btn ' + (state.tone === 'friendly' ? 'active' : '') + '" data-tone="friendly">Friendly</button>' +
+          '<button class="tone-btn ' + (state.tone === 'neutral' ? 'active' : '') + '" data-tone="neutral">Neutral</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="card">' +
+        '<label>AI Voice</label>' +
+        '<select id="voice-select">' +
+          '<option value="Puck">Puck (Default)</option>' +
+          '<option value="Charon">Charon</option>' +
+          '<option value="Kore">Kore</option>' +
+          '<option value="Fenrir">Fenrir</option>' +
+          '<option value="Aoede">Aoede</option>' +
+        '</select>' +
+      '</div>' +
+
+      '<p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:4px;">Negotiating in <span style="color:var(--green);font-weight:700;">' + state.detectedLanguage + '</span></p>' +
       '<button id="start-neg-btn" class="btn-primary">Start Negotiating →</button>';
 
     renderLocationPill(document.getElementById('pill-container-prefs'));
@@ -625,24 +1096,37 @@
     var container = document.getElementById('screen-negotiation');
     container.innerHTML =
       '<div id="pill-container-neg"></div>' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-        '<span>Negotiating in ' + state.detectedLanguage + '...</span>' +
-        '<span><span class="live-dot"></span> LIVE</span>' +
+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+        '<h1 style="font-size:20px;">Live Negotiation</h1>' +
+        '<div style="display:flex;align-items:center;gap:6px;background:rgba(255,59,59,0.1);border:1px solid rgba(255,59,59,0.25);border-radius:100px;padding:4px 12px;">' +
+          '<span class="live-dot" style="margin-right:0;"></span>' +
+          '<span style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:0.08em;">LIVE</span>' +
+        '</div>' +
       '</div>' +
+
+      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:2px;">' +
+        '<span style="font-size:12px;color:var(--muted);">Speaking in </span>' +
+        '<span style="font-size:12px;font-weight:700;color:var(--green);">' + state.detectedLanguage + '</span>' +
+      '</div>' +
+
       '<div id="transcript-box" class="transcript">' +
-        '<p id="initial-msg" style="color:#22c55e;font-style:italic;">AI is starting the negotiation...</p>' +
+        '<p style="color:var(--green);font-style:italic;font-size:13px;" id="initial-msg">AI is connecting to the negotiation...</p>' +
       '</div>' +
-      '<div style="display:flex;gap:8px;margin-top:16px;">' +
-        '<button id="deal-btn" class="btn-primary" style="flex:1;">✅ Accept Deal</button>' +
-        '<button id="walkaway-btn" class="btn-secondary" style="flex:1;">👋 Walk Away</button>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">' +
+        '<button id="deal-btn" class="btn-primary" style="margin-top:0;">✓ Accept Deal</button>' +
+        '<button id="walkaway-btn" class="btn-secondary" style="margin-top:0;">Walk Away</button>' +
       '</div>' +
-      '<div style="display:flex;gap:8px;margin-top:8px;">' +
-        '<button id="mute-btn" class="btn-secondary" style="flex:1;">🔇 Mute</button>' +
-        '<button id="stop-neg-btn" class="btn-danger" style="flex:1;">✕ Stop</button>' +
+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">' +
+        '<button id="mute-btn" class="btn-secondary" style="margin-top:0;font-size:13px;">Mute Mic</button>' +
+        '<button id="stop-neg-btn" class="btn-danger" style="margin-top:0;font-size:13px;">End Session</button>' +
       '</div>' +
-      '<div style="margin-top:12px;">' +
-        '<label style="font-size:13px;color:#aaa;">Final price if accepting deal ($USD)</label>' +
-        '<input type="number" id="final-price-input" step="0.50" value="' + (state.maxPrice || (state.analysis && state.analysis.suggested_usd) || '') + '" style="margin-top:4px;">' +
+
+      '<div class="card" style="margin-top:14px;">' +
+        '<label>Final price to log if accepting ($USD)</label>' +
+        '<input type="number" id="final-price-input" step="0.50" value="' + (state.maxPrice || (state.analysis && state.analysis.suggested_usd) || '') + '" style="margin-top:0;">' +
       '</div>';
 
     renderLocationPill(document.getElementById('pill-container-neg'));
@@ -654,7 +1138,7 @@
       if (firstMessage) { transcriptBox.innerHTML = ''; firstMessage = false; }
       var p = document.createElement('p');
       p.style.marginBottom = '12px';
-      p.innerHTML = '<b style="color:#22c55e;">BargainBuddy:</b> ' + text;
+      p.innerHTML = '<span style="font-weight:700;color:var(--green);font-family:Syne,sans-serif;">AI</span> <span style="color:var(--muted);margin:0 4px;">·</span> ' + text;
       transcriptBox.appendChild(p);
       transcriptBox.scrollTop = transcriptBox.scrollHeight;
     }
@@ -671,7 +1155,7 @@
     try {
       negotiation = await startNegotiation(state, appendTranscript, finishSession);
     } catch(e) {
-      appendTranscript('<span style="color:#ef4444;">Failed to start: ' + e.message + '</span>');
+      appendTranscript('<span style="color:var(--red)">Failed to start: ' + e.message + '</span>');
       return;
     }
 
@@ -685,7 +1169,9 @@
     document.getElementById('mute-btn').onclick = function(e) {
       isMuted = !isMuted;
       negotiation.mute(isMuted);
-      e.target.textContent = isMuted ? '🔊 Unmute' : '🔇 Mute';
+      e.target.textContent = isMuted ? 'Unmute Mic' : 'Mute Mic';
+      e.target.style.color = isMuted ? 'var(--red)' : '';
+      e.target.style.borderColor = isMuted ? 'rgba(255,59,59,0.4)' : '';
     };
     document.getElementById('stop-neg-btn').onclick = function() {
       negotiation.stop(); showScreen('location');
@@ -701,31 +1187,48 @@
       var quotedUsd = parseFloat((state.analysis && state.analysis.quoted_price_usd) || 0);
       var saved = Math.max(0, quotedUsd - (state.finalPrice || 0)).toFixed(2);
       container.innerHTML =
-        '<div style="text-align:center;padding:40px 0;">' +
-          '<div style="font-size:80px;">✅</div>' +
-          '<h1 style="color:#22c55e;">Deal closed!</h1>' +
+        '<div style="text-align:center;padding:48px 0 32px;">' +
+          '<div style="font-size:72px;line-height:1;margin-bottom:16px;">🤝</div>' +
+          '<h1 style="font-size:32px;color:var(--green);margin-bottom:8px;">Deal Closed!</h1>' +
+          '<p style="color:var(--muted);font-size:14px;">You negotiated like a local.</p>' +
         '</div>' +
-        '<div class="card">' +
-          '<p>You paid: <b>$' + state.finalPrice + ' USD</b></p>' +
-          '<p style="color:#22c55e;margin-top:8px;">You saved: <b>$' + saved + ' USD</b></p>' +
-          '<hr style="margin:16px 0;border:0;border-top:1px solid #333;">' +
-          '<p style="color:#aaa;font-size:14px;">' + (state.analysis && state.analysis.product_description) + ' in ' + (state.location && state.location.city) + '</p>' +
+
+        '<div class="card-accent" style="text-align:center;margin-bottom:14px;">' +
+          '<div class="tag">You paid</div>' +
+          '<div class="price-hero" style="font-size:48px;margin:6px 0;">$' + state.finalPrice + '</div>' +
+          '<hr class="divider">' +
+          '<div style="display:flex;justify-content:center;gap:32px;">' +
+            '<div>' +
+              '<div class="tag">You saved</div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:800;font-size:24px;color:var(--green);">$' + saved + '</div>' +
+            '</div>' +
+            '<div>' +
+              '<div class="tag">They asked</div>' +
+              '<div style="font-family:Syne,sans-serif;font-weight:700;font-size:24px;color:var(--muted2);text-decoration:line-through;">$' + quotedUsd.toFixed(2) + '</div>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
-        '<button id="shop-another-btn" class="btn-primary">🛍️ Shop another item</button>' +
-        '<button id="new-loc-btn" class="btn-secondary">📍 Change location</button>';
+
+        '<p style="font-size:12px;color:var(--muted2);text-align:center;margin-bottom:20px;">' +
+          (state.analysis && state.analysis.product_description) + ' · ' + (state.location && state.location.city) +
+        '</p>' +
+
+        '<button id="shop-another-btn" class="btn-primary">Shop Another Item →</button>' +
+        '<button id="new-loc-btn" class="btn-secondary">Change Location</button>';
 
       document.getElementById('shop-another-btn').onclick = function() { showScreen('capture'); };
       document.getElementById('new-loc-btn').onclick = function() { showScreen('location'); };
     } else {
       container.innerHTML =
-        '<div style="text-align:center;padding:40px 0;">' +
-          '<div style="font-size:80px;">👋</div>' +
-          '<h1>You kept your budget!</h1>' +
-          '<p style="color:#aaa;margin-top:10px;">Their best offer didn\'t meet your limit. Smart move.</p>' +
+        '<div style="text-align:center;padding:48px 0 32px;">' +
+          '<div style="font-size:72px;line-height:1;margin-bottom:16px;">💪</div>' +
+          '<h1 style="font-size:32px;margin-bottom:8px;">Budget Held!</h1>' +
+          '<p style="color:var(--muted);font-size:14px;line-height:1.6;">Their best offer didn\'t meet your limit.<br>Smart move — another stall awaits.</p>' +
         '</div>' +
-        '<button id="try-again-btn" class="btn-primary">🔄 Try again</button>' +
-        '<button id="new-item-btn" class="btn-secondary">🛍️ New item</button>' +
-        '<button id="new-loc-result-btn" class="btn-secondary">📍 New location</button>';
+
+        '<button id="try-again-btn" class="btn-primary">Try Again →</button>' +
+        '<button id="new-item-btn" class="btn-secondary">New Item</button>' +
+        '<button id="new-loc-result-btn" class="btn-secondary">New Location</button>';
 
       document.getElementById('try-again-btn').onclick = function() { showScreen('preferences'); };
       document.getElementById('new-item-btn').onclick = function() { showScreen('capture'); };
