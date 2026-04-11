@@ -419,11 +419,14 @@
     </div>
   </div>
 
+  <script src="config.js"></script>
   <script>
   // ─── CONFIG ───────────────────────────────────────────────────────────────
-  var CONFIG = {
-    GEMINI_API_KEY: 'YOUR_API_KEY_HERE'
-  };
+  // config.js (gitignored) sets window.CONFIG with the real key locally.
+  // On GitHub Pages the Action injects the key into the placeholder below.
+  if (typeof CONFIG === 'undefined') {
+    var CONFIG = { GEMINI_API_KEY: 'YOUR_API_KEY_HERE' };
+  }
 
   // ─── APP STATE ────────────────────────────────────────────────────────────
   var state = {
@@ -520,30 +523,23 @@
     var apiKey = (window.CONFIG || CONFIG).GEMINI_API_KEY;
     if (!apiKey || apiKey.includes('PASTE')) throw new Error('Invalid API Key');
 
-    var merchantPriceNote = state.merchantAskedPrice
-      ? 'IMPORTANT: The user has told you the merchant verbally quoted "' + state.merchantAskedPrice + '". Use this as the "quoted_price" value. This overrides anything you read from the image.\n\n'
-      : '';
+    var merchantNote = state.merchantAskedPrice
+      ? 'Merchant verbally quoted: "' + state.merchantAskedPrice + '" — use this as quoted_price, overriding anything in the image.'
+      : 'Look for any visible price tag or sticker in the image. If found, use it. If not, estimate the typical tourist ask for this item in ' + location.city + '.';
 
-    var prompt = 'You are an expert local street-market appraiser in ' + location.city + ', ' + location.country + '.\n' +
-      'The user describes this item as: "' + productDescription + '"\n\n' +
-      merchantPriceNote +
-      'STEP 1 — Read the price tag: ' + (state.merchantAskedPrice ? 'The merchant quoted "' + state.merchantAskedPrice + '" — use this as quoted_price.' : 'Look carefully at the image for any visible price tag, price sticker, handwritten price, or label. If visible, extract it exactly as written.') + '\n\n' +
-      'STEP 2 — If no price is known: Estimate the price a merchant in ' + location.city + ' would first quote to a foreign tourist for this specific type of item.\n\n'
-      'STEP 3 — Determine the fair price: Based on what locals actually pay (not the tourist ask), provide "suggested_usd" as the fair market value in USD using current realistic exchange rates for ' + location.country + '.\n\n' +
-      'Return ONLY valid JSON with no markdown or backticks:\n' +
-      '{\n' +
-      '  "product_description": "Detailed description of the product",\n' +
-      '  "quoted_price": "The price shown in the image or estimated tourist ask if not visible",\n' +
-      '  "quoted_currency": "Local currency code (e.g. INR, THB, JPY)",\n' +
-      '  "quoted_price_usd": <USD equivalent as a realistic number>,\n' +
-      '  "suggested_usd": <fair local market price in USD as a realistic number>,\n' +
-      '  "suggested_local": "Fair price in local currency (e.g. 350 INR)",\n' +
-      '  "local_context": "One sentence about typical pricing for this item in ' + location.city + '.",\n' +
-      '  "reasoning": "One sentence explaining the price difference.",\n' +
-      '  "negotiation_floor": <absolute lowest a local vendor would accept in USD>,\n' +
-      '  "tourist_markup": "low | medium | high"\n' +
-      '}\n\n' +
-      'IMPORTANT: All USD values must reflect real-world prices. Use current exchange rates. Do not use placeholder or example values.';
+    var prompt =
+      'OUTPUT FORMAT: respond with ONLY a single JSON object. No markdown, no text before or after, no code fences.\n\n' +
+      'TASK: You are a street-market price expert in ' + location.city + ', ' + location.country + '.\n' +
+      'Item: "' + productDescription + '"\n' +
+      'Quoted price: ' + merchantNote + '\n\n' +
+      'Provide the following JSON object with ALL fields filled in with realistic values:\n' +
+      '{"product_description":"short description of the item","quoted_price":"merchant asking price with currency","quoted_currency":"currency code e.g. CNY INR THB","quoted_price_usd":13.79,"suggested_usd":4.50,"suggested_local":"55 RMB","local_context":"one sentence on typical pricing here","reasoning":"one sentence on why the markup exists","negotiation_floor":2.50,"tourist_markup":"high"}\n\n' +
+      'Rules:\n' +
+      '- quoted_price_usd: USD value of the merchant ask using real exchange rates for ' + location.country + '\n' +
+      '- suggested_usd: what locals actually pay — NOT the tourist price\n' +
+      '- suggested_local: suggested_usd converted back to local currency\n' +
+      '- tourist_markup: "low" "medium" or "high" only\n' +
+      '- All numbers must be realistic for ' + location.city + ' — do not use placeholder values';
 
     var response = await fetch(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey,
@@ -554,17 +550,47 @@
           contents: [{ parts: [
             { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64Image } },
             { text: prompt }
-          ]}]
+          ]}],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: 'object',
+              properties: {
+                product_description: { type: 'string' },
+                quoted_price:        { type: 'string' },
+                quoted_currency:     { type: 'string' },
+                quoted_price_usd:    { type: 'number' },
+                suggested_usd:       { type: 'number' },
+                suggested_local:     { type: 'string' },
+                local_context:       { type: 'string' },
+                reasoning:           { type: 'string' },
+                negotiation_floor:   { type: 'number' },
+                tourist_markup:      { type: 'string' }
+              },
+              required: ['product_description','quoted_price','quoted_currency','quoted_price_usd','suggested_usd','suggested_local','tourist_markup']
+            }
+          }
         })
       }
     );
 
     var data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'API error');
-    var text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    var jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI returned unreadable format');
-    return JSON.parse(jsonMatch[0]);
+    if (!response.ok) throw new Error(data.error?.message || 'API error ' + response.status);
+
+    var candidate = data.candidates?.[0];
+    if (!candidate) throw new Error('No response from model');
+    var rawText = (candidate.content?.parts?.[0]?.text) || '';
+    if (!rawText) throw new Error('Empty model response (finishReason: ' + (candidate.finishReason || '?') + ')');
+
+    // responseMimeType:application/json guarantees clean JSON — parse directly
+    // Strip any accidental fences as a safety net, then parse
+    var cleaned = rawText.replace(/```json|```/gi, '').trim();
+    try { return JSON.parse(cleaned); } catch(e) {
+      // Last resort: extract first {...} block
+      var m = cleaned.match(/\{[\s\S]*\}/);
+      if (m) return JSON.parse(m[0]);
+      throw new Error('Could not parse model response: ' + rawText.slice(0, 100));
+    }
   }
 
   // ─── GEMINI LIVE (WebSocket) ──────────────────────────────────────────────
@@ -598,6 +624,8 @@
         }));
       };
 
+      var _turnCount = 0, _inTurn = false;
+
       ws.onmessage = function(event) {
         var msg;
         try {
@@ -616,14 +644,21 @@
               turnComplete: true
             }
           }));
+          onTranscript({ type: 'connected' });
           resolve({ stop: stopEverything, mute: function(val) { isMuted = val; } });
           return;
         }
 
-        var parts = (msg.serverContent && msg.serverContent.modelTurn && msg.serverContent.modelTurn.parts) || [];
+        var sc = msg.serverContent;
+        if (!sc) return;
+
+        var parts = (sc.modelTurn && sc.modelTurn.parts) || [];
+        var hasAudio = false;
         parts.forEach(function(part) {
-          if (part.inlineData && part.inlineData.data) enqueueAudio(part.inlineData.data);
+          if (part.inlineData && part.inlineData.data) { enqueueAudio(part.inlineData.data); hasAudio = true; }
         });
+        if (hasAudio && !_inTurn) { _inTurn = true; _turnCount++; onTranscript({ type: 'speaking', turn: _turnCount }); }
+        if (sc.turnComplete && _inTurn) { _inTurn = false; onTranscript({ type: 'listening', turn: _turnCount }); }
       };
 
       ws.onerror = function(e) {
@@ -707,15 +742,51 @@
   function buildSystemPrompt(s) {
     var a = s.analysis;
     var lang = s.detectedLanguage === 'Auto-detect' ? 'the local language' : s.detectedLanguage;
-    return 'You are BargainBuddy, a voice AI negotiating at a market in ' + s.location.city + ', ' + s.location.country + '.\n' +
-      'Speak ONLY in ' + lang + '. Keep responses short — this is live spoken conversation.\n\n' +
+    // Compute walk-away in local currency for the prompt
+    var exchRate = null;
+    var qLocal = parseFloat(a.quoted_price || ''), qUsd = Number(a.quoted_price_usd || 0);
+    var sLocal = parseFloat(a.suggested_local || ''), sUsd = Number(a.suggested_usd || 0);
+    if (qLocal > 0 && qUsd > 0) exchRate = qLocal / qUsd;
+    else if (sLocal > 0 && sUsd > 0) exchRate = sLocal / sUsd;
+    var currCode = a.quoted_currency || (a.suggested_local || '').replace(/[\d\s.,]/g, '').trim() || '';
+    var maxLocal = (exchRate && currCode && s.maxPrice) ? Math.round(Number(s.maxPrice) * exchRate) + ' ' + currCode : null;
+    var maxPriceStr = maxLocal ? maxLocal + ' ($' + s.maxPrice + ' USD)' : '$' + s.maxPrice + ' USD';
+
+    return 'You are BargainBuddy, a voice AI negotiating at a market in ' + s.location.city + ', ' + s.location.country + '.\n\n' +
+
+      '=== CRITICAL RULES — MUST FOLLOW EXACTLY ===\n\n' +
+
+      'RULE 1 — ENGLISH NARRATION (the tourist does NOT speak ' + lang + '):\n' +
+      'After EVERY merchant counter-offer, say these EXACT words in ENGLISH first, before continuing:\n' +
+      '  "Merchant says: [price in numbers and currency]"\n' +
+      'Examples (say these IN ENGLISH, NOT in ' + lang + '):\n' +
+      '  "Merchant says: 80 RMB" → then continue haggling in ' + lang + '\n' +
+      '  "Merchant says: 500 baht" → then continue haggling in ' + lang + '\n' +
+      'The English phrase MUST be in English Roman letters. NEVER say it in ' + lang + ' characters or ' + lang + ' words.\n\n' +
+
+      'RULE 2 — DEAL SIGNAL (say this in English when deal is agreed):\n' +
+      '  "Deal confirmed: [price] [currency]"\n' +
+      'Example: "Deal confirmed: 55 RMB" — say this in ENGLISH before ending in ' + lang + '.\n\n' +
+
+      'RULE 3 — WALK AWAY SIGNAL (say this in English when giving up):\n' +
+      '  "Walk away" — say this single English phrase, then say goodbye in ' + lang + '.\n\n' +
+
+      'RULE 4 — OPENING COUNTER-OFFER:\n' +
+      'Your walk-away limit is ' + maxPriceStr + '. This is the MAXIMUM you will ever pay.\n' +
+      'Open 30-40% BELOW the walk-away limit to leave room to negotiate up.\n' +
+      'Opening offer = roughly ' + (maxLocal ? Math.round(Number(s.maxPrice) * 0.62 * (exchRate || 1)) + ' ' + currCode : '$' + (Number(s.maxPrice) * 0.62).toFixed(2)) + ' — start here, work up slowly.\n' +
+      'NEVER start at or above the walk-away limit — there would be no room to negotiate.\n\n' +
+
+      '=== NEGOTIATION DETAILS ===\n' +
       'Product: ' + a.product_description + '\n' +
-      'Merchant asking: ' + a.quoted_price + ' ' + a.quoted_currency + '\n' +
-      'Your target: ' + a.suggested_local + ' (fair local price)\n' +
-      'Walk-away limit: $' + s.maxPrice + ' USD\n' +
-      'Negotiation style: ' + s.tone + '\n\n' +
-      'Start by greeting the merchant and making an opening counter-offer about 20-30% below the asking price. Negotiate naturally, conceding slowly. If you reach a good price, confirm the deal enthusiastically. If no progress after several rounds, thank them and leave.';
+      'Merchant asking: ' + a.quoted_price + ' ' + (currCode || '') + '\n' +
+      'Fair market price (your target): ' + a.suggested_local + '\n' +
+      'Walk-away limit: ' + maxPriceStr + '\n' +
+      'Style: ' + s.tone + '\n\n' +
+
+      'Negotiate in ' + lang + '. Concede slowly. Aim for the fair market price. Use the English signals above so the tourist always knows what is happening.';
   }
+
 
   // ─── SCREEN: LOCATION ─────────────────────────────────────────────────────
   var COUNTRY_LANGUAGE_MAP = {
@@ -907,46 +978,66 @@
         displayAnalysisResult(result, false);
       })
       .catch(function(e) {
-        console.error('Analysis error (falling back):', e);
+        console.error('Analysis error:', e);
+        // Show a visible API error so user knows something is wrong
+        var msg = e.message || 'Unknown error';
+        var isKeyError = msg.toLowerCase().indexOf('api') !== -1 || msg.toLowerCase().indexOf('key') !== -1 || msg.toLowerCase().indexOf('invalid') !== -1 || msg.toLowerCase().indexOf('401') !== -1 || msg.toLowerCase().indexOf('403') !== -1;
+        document.getElementById('loading-area').innerHTML =
+          '<div style="text-align:center;padding:20px 0;">' +
+            '<div style="font-size:40px;margin-bottom:12px;">⚠️</div>' +
+            '<p style="font-family:Syne,sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;color:var(--orange);">' + (isKeyError ? 'API Key Error' : 'Analysis Failed') + '</p>' +
+            '<p style="color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.6;">' + (isKeyError ? 'Check that your real Gemini API key is in <b>config.js</b> on your device.' : msg) + '</p>' +
+            '<button onclick="showScreen(\'capture\')" class="btn-secondary" style="width:auto;padding:10px 24px;">← Go Back</button>' +
+          '</div>';
+        // Still set a minimal fallback so other screens don't break if user proceeds
         var fallback = {
           product_description: state.productDescription,
-          quoted_price: null, quoted_currency: null,
-          quoted_price_usd: null, suggested_usd: null,
-          suggested_local: null,
-          local_context: '',
-          reasoning: 'AI analysis was limited.',
-          negotiation_floor: null, tourist_markup: 'medium'
+          quoted_price: state.merchantAskedPrice || null, quoted_currency: null,
+          quoted_price_usd: null, suggested_usd: null, suggested_local: null,
+          local_context: '', reasoning: '', negotiation_floor: null, tourist_markup: null
         };
         state.analysis = fallback;
-        displayAnalysisResult(fallback, true);
       });
   }
 
   function displayAnalysisResult(res, isFallback) {
-    // Safely coerce every field — never let undefined reach innerHTML
-    // Always fall back to what the user manually entered on the capture screen
-    var quotedPrice    = res.quoted_price    || state.merchantAskedPrice || null;
-    var quotedPriceUsd = res.quoted_price_usd != null ? Number(res.quoted_price_usd) : null;
-    var suggestedLocal = res.suggested_local || null;
-    var suggestedUsd   = res.suggested_usd   != null ? Number(res.suggested_usd)   : null;
-    var productDesc    = res.product_description || state.productDescription || '';
-    var markup         = res.tourist_markup || null;
-    // If we have the merchant price from user input, this isn't really a fallback failure
-    var trulyNoData    = !quotedPrice && !suggestedLocal && !suggestedUsd;
+    // Safe coercions — block [object Object] if model returns wrong types
+    function safeStr(v) {
+      if (v == null) return null;
+      if (typeof v === 'object') return null;
+      var s = String(v).trim();
+      return (s && s !== 'null' && s !== 'undefined') ? s : null;
+    }
+    function safeNum(v) {
+      if (v == null) return null;
+      var n = Number(v);
+      return (!isNaN(n) && isFinite(n)) ? n : null;
+    }
+
+    var quotedPrice    = safeStr(res.quoted_price)    || safeStr(state.merchantAskedPrice) || null;
+    var quotedPriceUsd = safeNum(res.quoted_price_usd);
+    var suggestedLocal = safeStr(res.suggested_local) || null;
+    var suggestedUsd   = safeNum(res.suggested_usd);
+
+    // Always ensure a suggested price exists — fall back to 55% of merchant ask
+    if (suggestedUsd == null && quotedPriceUsd != null) suggestedUsd = Math.round(quotedPriceUsd * 0.55 * 100) / 100;
+    if (suggestedLocal == null && suggestedUsd != null) suggestedLocal = '$' + suggestedUsd.toFixed(2) + ' USD';
+    var productDesc    = safeStr(res.product_description) || safeStr(state.productDescription) || '';
+    var markup         = safeStr(res.tourist_markup) || null;
+    var trulyNoData    = !quotedPrice && suggestedLocal == null && suggestedUsd == null;
 
     var badgeClass  = markup === 'high' ? 'badge-high' : (markup === 'medium' ? 'badge-medium' : 'badge-low');
-    var markupLabel = (markup || 'unknown') + ' markup';
+    var markupLabel = markup ? markup + ' markup' : 'price analysis';
 
-    var savingsPct = (quotedPriceUsd && suggestedUsd)
+    var savingsPct = (quotedPriceUsd && suggestedUsd && quotedPriceUsd > suggestedUsd)
       ? Math.round((1 - suggestedUsd / quotedPriceUsd) * 100) : null;
-    var savedUsd   = (quotedPriceUsd && suggestedUsd)
-      ? (quotedPriceUsd - suggestedUsd).toFixed(2) : null;
+    var savedUsd   = savingsPct ? (quotedPriceUsd - suggestedUsd).toFixed(2) : null;
 
-    // Render "local · $X USD", gracefully handling any missing value
+    // Render "local · $X.XX USD" — never renders objects or raw floats
     function pricePair(localStr, usdNum, strikethrough, color) {
       var parts = [];
-      if (localStr != null && String(localStr).trim()) parts.push(String(localStr).trim());
-      if (usdNum  != null && !isNaN(usdNum))           parts.push('$' + usdNum + ' USD');
+      if (localStr != null)                  parts.push(localStr);
+      if (usdNum  != null && !isNaN(usdNum)) parts.push('$' + Number(usdNum).toFixed(2) + ' USD');
       var combined = parts.length ? parts.join('  ·  ') : '—';
       var style = 'font-family:Manrope,sans-serif;font-weight:700;font-size:26px;line-height:1.2;color:' + (color || 'inherit') + ';';
       if (strikethrough) style += 'text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:2px;';
@@ -982,7 +1073,6 @@
         '<div style="padding:18px 20px;">' +
           '<p style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">Offer this price</p>' +
           pricePair(suggestedLocal, suggestedUsd, false, 'var(--green)') +
-          (!suggestedLocal && !suggestedUsd ? '<p style="font-size:11px;color:var(--muted);margin-top:6px;">Set your budget on the next screen</p>' : '') +
         '</div>' +
 
       '</div>' +
@@ -1094,10 +1184,32 @@
   // ─── SCREEN: NEGOTIATION ─────────────────────────────────────────────────
   async function initNegotiationScreen() {
     var container = document.getElementById('screen-negotiation');
+    var a = state.analysis || {};
+    var lang = state.detectedLanguage || 'local language';
+    var merchantUsd  = a.quoted_price_usd  != null ? Number(a.quoted_price_usd)  : null;
+    var targetUsd    = a.suggested_usd     != null ? Number(a.suggested_usd)     : null;
+    var merchantDisp = [a.quoted_price, merchantUsd != null ? '$' + merchantUsd.toFixed(2) : null].filter(Boolean).join(' · ') || '—';
+    var targetDisp   = [a.suggested_local, targetUsd != null ? '$' + targetUsd.toFixed(2) : null].filter(Boolean).join(' · ') || '—';
+
+    // Compute exchange rate (local units per 1 USD) for local currency display throughout
+    // Fallback: extract currency code from suggested_local string (e.g. "55 RMB" → "RMB")
+    var _currCode = a.quoted_currency || (a.suggested_local || '').replace(/[\d\s.,]/g, '').trim() || '';
+    var _exchRate = null;
+    var _qLocal = parseFloat(a.quoted_price || ''); var _qUsd = Number(a.quoted_price_usd || 0);
+    var _sLocal = parseFloat(a.suggested_local || ''); var _sUsd = Number(a.suggested_usd || 0);
+    if (_qLocal > 0 && _qUsd > 0) _exchRate = _qLocal / _qUsd;
+    else if (_sLocal > 0 && _sUsd > 0) _exchRate = _sLocal / _sUsd;
+
+    // Walk away: show local + USD
+    var _ceilUsd   = state.maxPrice ? Number(state.maxPrice) : null;
+    var _ceilLocal = (_ceilUsd && _exchRate && _currCode) ? Math.round(_ceilUsd * _exchRate) + ' ' + _currCode : null;
+    var ceilDisp   = [_ceilLocal, _ceilUsd ? '$' + _ceilUsd.toFixed(2) : null].filter(Boolean).join(' · ') || '—';
+
     container.innerHTML =
       '<div id="pill-container-neg"></div>' +
 
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+      // Header
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
         '<h1 style="font-size:20px;">Live Negotiation</h1>' +
         '<div style="display:flex;align-items:center;gap:6px;background:rgba(255,59,59,0.1);border:1px solid rgba(255,59,59,0.25);border-radius:100px;padding:4px 12px;">' +
           '<span class="live-dot" style="margin-right:0;"></span>' +
@@ -1105,42 +1217,126 @@
         '</div>' +
       '</div>' +
 
-      '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);padding:12px 14px;margin-bottom:2px;">' +
-        '<span style="font-size:12px;color:var(--muted);">Speaking in </span>' +
-        '<span style="font-size:12px;font-weight:700;color:var(--green);">' + state.detectedLanguage + '</span>' +
+      // Price context bar
+      '<div class="card" style="padding:0;overflow:hidden;margin-bottom:10px;">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;">' +
+          '<div style="padding:11px 13px;border-right:1px solid var(--border);">' +
+            '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">They ask</p>' +
+            '<p style="font-family:Manrope,sans-serif;font-weight:700;font-size:12px;color:#888;line-height:1.3;">' + merchantDisp + '</p>' +
+          '</div>' +
+          '<div style="padding:11px 13px;border-right:1px solid var(--border);background:rgba(0,255,136,0.04);">' +
+            '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:4px;">Target</p>' +
+            '<p style="font-family:Manrope,sans-serif;font-weight:700;font-size:12px;color:var(--green);line-height:1.3;">' + targetDisp + '</p>' +
+          '</div>' +
+          '<div style="padding:11px 13px;background:rgba(255,59,59,0.03);">' +
+            '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:4px;">Walk away</p>' +
+            '<p style="font-family:Manrope,sans-serif;font-weight:700;font-size:12px;color:var(--red);line-height:1.3;">' + ceilDisp + '</p>' +
+          '</div>' +
+        '</div>' +
+        '<div style="padding:7px 13px;border-top:1px solid var(--border);background:var(--bg3);">' +
+          '<span style="font-size:11px;color:var(--muted);">Negotiating in </span>' +
+          '<span style="font-size:11px;font-weight:700;color:var(--green);">' + lang + '</span>' +
+          '<span style="font-size:11px;color:var(--muted);"> · AI will narrate prices &amp; decisions in </span>' +
+          '<span style="font-size:11px;font-weight:700;color:var(--text);">English</span>' +
+        '</div>' +
       '</div>' +
 
-      '<div id="transcript-box" class="transcript">' +
-        '<p style="color:var(--green);font-style:italic;font-size:13px;" id="initial-msg">AI is connecting to the negotiation...</p>' +
+      // Live status
+      '<div id="neg-status" style="display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-md);padding:14px 16px;margin-bottom:10px;transition:border-color 300ms;">' +
+        '<div id="neg-status-icon" style="font-size:26px;flex-shrink:0;">⏳</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<p id="neg-status-title" style="font-family:Syne,sans-serif;font-weight:700;font-size:14px;margin-bottom:2px;">Connecting...</p>' +
+          '<p id="neg-status-sub" style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Setting up secure audio session</p>' +
+        '</div>' +
       '</div>' +
 
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;">' +
-        '<button id="deal-btn" class="btn-primary" style="margin-top:0;">✓ Accept Deal</button>' +
-        '<button id="walkaway-btn" class="btn-secondary" style="margin-top:0;">Walk Away</button>' +
+      // Event log
+      '<div id="event-log" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;height:130px;overflow-y:auto;margin-bottom:14px;">' +
+        '<p style="font-size:12px;color:var(--muted2);font-style:italic;">Listening for AI updates...</p>' +
       '</div>' +
 
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">' +
-        '<button id="mute-btn" class="btn-secondary" style="margin-top:0;font-size:13px;">Mute Mic</button>' +
+      // Action buttons
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
+        '<button id="deal-btn" class="btn-primary" style="margin-top:0;padding:16px 8px;font-size:15px;">🤝 Deal Done</button>' +
+        '<button id="walkaway-btn" class="btn-secondary" style="margin-top:0;padding:16px 8px;font-size:15px;">🚶 Walk Away</button>' +
+      '</div>' +
+      '<p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;">When AI says <strong style="color:var(--text);">"Deal confirmed"</strong> tap Deal Done · When AI says <strong style="color:var(--text);">"Walk away"</strong> tap Walk Away</p>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+        '<button id="mute-btn" class="btn-secondary" style="margin-top:0;font-size:13px;">🎙 Mute Mic</button>' +
         '<button id="stop-neg-btn" class="btn-danger" style="margin-top:0;font-size:13px;">End Session</button>' +
       '</div>' +
 
-      '<div class="card" style="margin-top:14px;">' +
-        '<label>Final price to log if accepting ($USD)</label>' +
-        '<input type="number" id="final-price-input" step="0.50" value="' + (state.maxPrice || (state.analysis && state.analysis.suggested_usd) || '') + '" style="margin-top:0;">' +
+      // Deal price overlay — shown when user taps Deal Done
+      '<div id="deal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:999;align-items:center;justify-content:center;">' +
+        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:28px 24px;width:300px;max-width:90vw;text-align:center;">' +
+          '<div style="font-size:40px;margin-bottom:10px;">🤝</div>' +
+          '<h2 style="font-size:20px;font-family:Syne,sans-serif;margin-bottom:6px;">Deal agreed!</h2>' +
+          '<p style="font-size:13px;color:var(--muted);margin-bottom:20px;">The AI just said the price in English.<br>Enter that amount below in <strong id="overlay-curr-label" style="color:var(--text);">' + (_currCode || 'local currency') + '</strong>:</p>' +
+          '<input type="number" id="deal-local-input" placeholder="e.g. 50" inputmode="numeric" style="width:100%;box-sizing:border-box;font-family:Manrope,sans-serif;font-size:28px;font-weight:800;text-align:center;background:var(--bg3);border:2px solid var(--border);border-radius:12px;padding:12px 8px;color:var(--text);outline:none;margin-bottom:8px;">' +
+          '<p id="overlay-usd-equiv" style="font-size:14px;color:var(--muted);min-height:20px;margin-bottom:20px;"></p>' +
+          '<button id="deal-confirm-btn" class="btn-primary" style="margin-top:0;width:100%;font-size:16px;padding:14px;">Confirm &amp; See Result →</button>' +
+          '<button id="deal-cancel-btn" class="btn-secondary" style="margin-top:8px;width:100%;font-size:13px;">Cancel</button>' +
+        '</div>' +
       '</div>';
 
     renderLocationPill(document.getElementById('pill-container-neg'));
 
-    var transcriptBox = document.getElementById('transcript-box');
-    var isMuted = false, firstMessage = true, sessionDone = false;
+    var isMuted = false, sessionDone = false, logEmpty = true;
+    var statusEl    = document.getElementById('neg-status');
+    var statusIcon  = document.getElementById('neg-status-icon');
+    var statusTitle = document.getElementById('neg-status-title');
+    var statusSub   = document.getElementById('neg-status-sub');
+    var eventLog    = document.getElementById('event-log');
+    var dealBtn     = document.getElementById('deal-btn');
+    var walkawayBtn = document.getElementById('walkaway-btn');
 
-    function appendTranscript(text) {
-      if (firstMessage) { transcriptBox.innerHTML = ''; firstMessage = false; }
-      var p = document.createElement('p');
-      p.style.marginBottom = '12px';
-      p.innerHTML = '<span style="font-weight:700;color:var(--green);font-family:Syne,sans-serif;">AI</span> <span style="color:var(--muted);margin:0 4px;">·</span> ' + text;
-      transcriptBox.appendChild(p);
-      transcriptBox.scrollTop = transcriptBox.scrollHeight;
+    function ts() { var d = new Date(); return ('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
+
+    function logEvent(icon, text, color) {
+      if (logEmpty) { eventLog.innerHTML = ''; logEmpty = false; }
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:7px;margin-bottom:7px;align-items:flex-start;';
+      row.innerHTML = '<span style="font-size:13px;flex-shrink:0;">' + icon + '</span>' +
+        '<span style="font-size:12px;color:' + (color||'#aaa') + ';flex:1;line-height:1.5;">' + text + '</span>' +
+        '<span style="font-size:10px;color:var(--muted2);flex-shrink:0;padding-top:1px;">' + ts() + '</span>';
+      eventLog.appendChild(row);
+      eventLog.scrollTop = eventLog.scrollHeight;
+    }
+
+    function setStatus(icon, title, sub, borderColor) {
+      statusIcon.textContent  = icon;
+      statusTitle.textContent = title;
+      statusSub.textContent   = sub;
+      statusEl.style.borderColor = borderColor || 'var(--border)';
+    }
+
+    function onEvent(evt) {
+      if (evt.type === 'connected') {
+        setStatus('✅', 'Session live', 'AI is negotiating — listen for English updates', 'rgba(0,255,136,0.4)');
+        logEvent('🔗', 'Connected — AI starting negotiation in ' + lang, 'var(--green)');
+
+      } else if (evt.type === 'speaking') {
+        var turnNum = evt.turn;
+        if (turnNum === 1) {
+          setStatus('🔊', 'AI is speaking…', 'Making opening offer — listen carefully', 'rgba(0,255,136,0.4)');
+          logEvent('🗣️', 'Turn 1 — AI making opening offer', 'var(--green)');
+        } else {
+          setStatus('🔊', 'AI is speaking…', 'Listen for "Merchant says:" in English', 'rgba(0,255,136,0.4)');
+          logEvent('🗣️', 'Turn ' + turnNum + ' — AI speaking', '#ccc');
+        }
+        // After enough turns, give the Deal Done button a subtle glow
+        if (turnNum >= 3) {
+          dealBtn.style.boxShadow = '0 0 0 3px rgba(0,255,136,0.3)';
+        }
+
+      } else if (evt.type === 'listening') {
+        setStatus('🎤', 'Merchant\'s turn', 'Hold phone toward merchant — AI is listening', 'rgba(255,107,53,0.4)');
+        logEvent('🎤', 'Merchant speaking… (turn ' + evt.turn + ')', 'var(--orange)');
+
+      } else if (evt.type === 'error') {
+        setStatus('❌', 'Error', evt.msg || 'Check API key', 'rgba(255,59,59,0.5)');
+        logEvent('❌', evt.msg || 'Error', 'var(--red)');
+      }
     }
 
     function finishSession(outcome, finalPrice) {
@@ -1148,28 +1344,76 @@
       sessionDone = true;
       state.outcome = outcome;
       state.finalPrice = finalPrice;
+      state.exchRate = _exchRate;   // save for result screen local currency display
+      state.currCode = _currCode;
       showScreen('result');
     }
 
     var negotiation;
     try {
-      negotiation = await startNegotiation(state, appendTranscript, finishSession);
+      negotiation = await startNegotiation(state, onEvent, finishSession);
     } catch(e) {
-      appendTranscript('<span style="color:var(--red)">Failed to start: ' + e.message + '</span>');
+      onEvent({ type: 'error', msg: 'Failed to start: ' + e.message });
       return;
     }
 
+    // Deal overlay wiring
+    var dealOverlay     = document.getElementById('deal-overlay');
+    var dealLocalInput  = document.getElementById('deal-local-input');
+    var overlayUsdEquiv = document.getElementById('overlay-usd-equiv');
+
+    // Pre-fill with AI's target local price as the default
+    var defaultLocal = (_exchRate && targetUsd) ? Math.round(targetUsd * _exchRate) : '';
+    dealLocalInput.value = defaultLocal;
+
+    function refreshOverlayUsd() {
+      var localVal = parseFloat(dealLocalInput.value);
+      if (localVal > 0 && _exchRate) {
+        var usd = (localVal / _exchRate);
+        overlayUsdEquiv.textContent = '≈ $' + usd.toFixed(2) + ' USD';
+        overlayUsdEquiv.style.color = 'var(--green)';
+      } else {
+        overlayUsdEquiv.textContent = '';
+      }
+    }
+    dealLocalInput.oninput = refreshOverlayUsd;
+    refreshOverlayUsd();
+
     document.getElementById('deal-btn').onclick = function() {
-      var price = parseFloat(document.getElementById('final-price-input').value) || state.maxPrice;
-      negotiation.stop(); finishSession('deal', price);
+      negotiation.mute(true); // silence mic while overlay is open
+      dealOverlay.style.display = 'flex';
+      dealLocalInput.focus();
+    };
+
+    document.getElementById('deal-cancel-btn').onclick = function() {
+      dealOverlay.style.display = 'none';
+      negotiation.mute(false);
+    };
+
+    document.getElementById('deal-confirm-btn').onclick = function() {
+      var localVal = parseFloat(dealLocalInput.value);
+      var finalUsd;
+      if (localVal > 0 && _exchRate) {
+        finalUsd = Math.round(localVal / _exchRate * 100) / 100;
+      } else {
+        // No exchange rate — treat input as USD directly
+        finalUsd = localVal || targetUsd || _ceilUsd || state.maxPrice;
+      }
+      // Store the actual local price the user confirmed, so result screen shows it exactly
+      state.dealLocalPrice  = localVal || null;
+      state.dealLocalCurr   = _currCode || null;
+      logEvent('🤝', 'Deal at ' + (localVal ? localVal + ' ' + (_currCode || '') + ' · ' : '') + '$' + Number(finalUsd).toFixed(2), 'var(--green)');
+      negotiation.stop();
+      finishSession('deal', finalUsd);
     };
     document.getElementById('walkaway-btn').onclick = function() {
+      logEvent('🚶', 'Walked away', 'var(--orange)');
       negotiation.stop(); finishSession('walkaway', null);
     };
     document.getElementById('mute-btn').onclick = function(e) {
       isMuted = !isMuted;
       negotiation.mute(isMuted);
-      e.target.textContent = isMuted ? 'Unmute Mic' : 'Mute Mic';
+      e.target.textContent = isMuted ? '🔊 Unmute' : '🎙 Mute Mic';
       e.target.style.color = isMuted ? 'var(--red)' : '';
       e.target.style.borderColor = isMuted ? 'rgba(255,59,59,0.4)' : '';
     };
@@ -1185,7 +1429,21 @@
 
     if (isDeal) {
       var quotedUsd = parseFloat((state.analysis && state.analysis.quoted_price_usd) || 0);
-      var saved = Math.max(0, quotedUsd - (state.finalPrice || 0)).toFixed(2);
+      var finalUsd  = parseFloat(state.finalPrice) || 0;
+      var saved     = Math.max(0, quotedUsd - finalUsd).toFixed(2);
+
+      // Use the user-confirmed local price (from the deal overlay) as the primary display
+      var localPaid = state.dealLocalPrice && state.dealLocalCurr
+        ? state.dealLocalPrice + ' ' + state.dealLocalCurr
+        : (state.exchRate && state.currCode && finalUsd)
+          ? Math.round(finalUsd * state.exchRate) + ' ' + state.currCode
+          : null;
+
+      var paidLine = localPaid
+        ? '<div class="price-hero" style="font-size:40px;margin:4px 0;">' + localPaid + '</div>' +
+          '<div style="font-size:18px;color:var(--muted);margin-bottom:4px;">≈ $' + finalUsd.toFixed(2) + ' USD</div>'
+        : '<div class="price-hero" style="font-size:48px;margin:6px 0;">$' + finalUsd.toFixed(2) + '</div>';
+
       container.innerHTML =
         '<div style="text-align:center;padding:48px 0 32px;">' +
           '<div style="font-size:72px;line-height:1;margin-bottom:16px;">🤝</div>' +
@@ -1195,7 +1453,7 @@
 
         '<div class="card-accent" style="text-align:center;margin-bottom:14px;">' +
           '<div class="tag">You paid</div>' +
-          '<div class="price-hero" style="font-size:48px;margin:6px 0;">$' + state.finalPrice + '</div>' +
+          paidLine +
           '<hr class="divider">' +
           '<div style="display:flex;justify-content:center;gap:32px;">' +
             '<div>' +
