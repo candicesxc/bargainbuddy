@@ -162,7 +162,7 @@
       background: var(--bg3);
       border: 1px solid var(--border);
       color: var(--muted);
-      font-size: 13px;
+      font-size: 11px;
       min-height: 44px;
       font-family: 'Manrope', sans-serif;
       font-weight: 600;
@@ -679,9 +679,16 @@
         console.warn('WebSocket closed — code: ' + e.code + ', reason: "' + e.reason + '"');
         if (!sessionEnded) {
           sessionEnded = true;
-          var detail = e.reason ? ': ' + e.reason : ' (code ' + e.code + ')';
-          onTranscript('<span style="color:#FFAA00">Session disconnected' + detail + '.</span>');
-          cleanup(); reject(new Error('WebSocket closed: ' + (e.reason || e.code)));
+          cleanup();
+          // Natural close (1000/1001) = AI finished the session; anything else = error
+          if (e.code === 1000 || e.code === 1001 || !e.code) {
+            onTranscript({ type: 'session_ended' });
+            resolve({ stop: function(){}, mute: function(){} }); // don't reject — let user pick outcome
+          } else {
+            var detail = e.reason ? ': ' + e.reason : ' (code ' + e.code + ')';
+            onTranscript('<span style="color:#FFAA00">Session disconnected' + detail + '.</span>');
+            reject(new Error('WebSocket closed: ' + (e.reason || e.code)));
+          }
         }
       };
 
@@ -1277,14 +1284,14 @@
       '</div>' +
 
       // Contextual action popup — slides up when deal/walkaway is relevant
-      '<div id="action-popup" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:990;padding:16px;background:linear-gradient(transparent,var(--bg) 18%);pointer-events:none;">' +
-        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 16px 16px;padding:18px 16px 14px;box-shadow:0 -8px 32px rgba(0,0,0,0.5);pointer-events:all;">' +
+      '<div id="action-popup" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:990;padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 22%);pointer-events:none;">' +
+        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 16px 16px;padding:18px 16px 12px;box-shadow:0 -8px 32px rgba(0,0,0,0.5);pointer-events:all;">' +
           '<p id="action-popup-label" style="font-size:12px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;"></p>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">' +
             '<button id="deal-btn" class="btn-primary" style="margin-top:0;padding:15px 8px;font-size:15px;">🤝 Accept Deal</button>' +
             '<button id="walkaway-btn" class="btn-secondary" style="margin-top:0;padding:15px 8px;font-size:15px;">🚶 Walk Away</button>' +
           '</div>' +
-          '<button id="action-popup-dismiss" style="width:100%;background:none;border:none;color:var(--muted);font-size:12px;padding:4px;cursor:pointer;">Keep negotiating →</button>' +
+          '<button id="action-popup-dismiss" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-size:13px;font-weight:600;font-family:Manrope,sans-serif;padding:12px;cursor:pointer;letter-spacing:0.01em;">Keep negotiating →</button>' +
         '</div>' +
       '</div>' +
 
@@ -1374,6 +1381,23 @@
             : 'Getting close? Ready to decide?';
           showActionPopup(label);
         }
+
+      } else if (evt.type === 'session_ended') {
+        // AI ended the session (said Walk Away or Deal) — show a clear English prompt
+        hideActionPopup();
+        setStatus('🏁', 'Session ended', 'AI has finished the negotiation', 'rgba(255,107,53,0.4)');
+        logEvent('🏁', 'AI ended the session — did you get a deal?', 'var(--orange)');
+        // Show a prominent end-of-session card in the log
+        var endCard = document.createElement('div');
+        endCard.style.cssText = 'background:rgba(255,107,53,0.08);border:1px solid rgba(255,107,53,0.3);border-radius:12px;padding:14px 16px;margin-top:10px;text-align:center;';
+        endCard.innerHTML = '<p style="font-size:13px;font-weight:700;color:var(--orange);margin-bottom:10px;">🏁 AI ended the session</p>' +
+          '<p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Listen for: <b style="color:var(--text)">"Deal confirmed: [price]"</b> or <b style="color:var(--text)">"Walk away"</b></p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+            '<button onclick="document.getElementById(\'deal-btn\').click()" style="background:rgba(0,255,136,0.12);border:1px solid var(--green);border-radius:10px;color:var(--green);font-size:13px;font-weight:700;font-family:Manrope,sans-serif;padding:11px 8px;cursor:pointer;">🤝 Got a deal</button>' +
+            '<button onclick="document.getElementById(\'walkaway-btn\').click()" style="background:rgba(255,59,59,0.08);border:1px solid var(--red);border-radius:10px;color:var(--red);font-size:13px;font-weight:700;font-family:Manrope,sans-serif;padding:11px 8px;cursor:pointer;">🚶 Walked away</button>' +
+          '</div>';
+        document.getElementById('event-log').appendChild(endCard);
+        document.getElementById('event-log').scrollTop = 9999;
 
       } else if (evt.type === 'error') {
         setStatus('❌', 'Error', evt.msg || 'Check API key', 'rgba(255,59,59,0.5)');
