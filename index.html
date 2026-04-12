@@ -157,17 +157,22 @@
     .btn-danger:hover { background: rgba(255,59,59,0.2); }
 
     /* ── Tone Buttons ── */
-    .tone-group { display: flex; gap: 8px; margin-top: 10px; }
+    .tone-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; width: 100%; box-sizing: border-box; }
     .tone-btn {
       background: var(--bg3);
       border: 1px solid var(--border);
       color: var(--muted);
-      flex: 1;
       font-size: 13px;
       min-height: 44px;
       font-family: 'Manrope', sans-serif;
       font-weight: 600;
       border-radius: var(--radius-sm);
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0 4px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
     .tone-btn.active {
       background: rgba(0,255,136,0.1);
@@ -757,11 +762,20 @@
       '=== CRITICAL RULES — MUST FOLLOW EXACTLY ===\n\n' +
 
       'RULE 1 — ENGLISH NARRATION (the tourist does NOT speak ' + lang + '):\n' +
-      'After EVERY merchant counter-offer, say these EXACT words in ENGLISH first, before continuing:\n' +
-      '  "Merchant says: [price in numbers and currency]"\n' +
-      'Examples (say these IN ENGLISH, NOT in ' + lang + '):\n' +
-      '  "Merchant says: 80 RMB" → then continue haggling in ' + lang + '\n' +
-      '  "Merchant says: 500 baht" → then continue haggling in ' + lang + '\n' +
+      'After EVERY merchant response, say a SHORT English update FIRST before continuing in ' + lang + '.\n' +
+      'The English update format depends on what the merchant said:\n\n' +
+      '  • If merchant quoted a NEW price: "Merchant says: [price]"\n' +
+      '    Example: "Merchant says: 80 RMB" → continue in ' + lang + '\n\n' +
+      '  • If merchant REFUSED to lower price (e.g. "no no cannot", "this is my best", "not possible"):\n' +
+      '    "Merchant holding firm — [brief context]"\n' +
+      '    Example: "Merchant holding firm — says this is genuine handmade" → continue in ' + lang + '\n\n' +
+      '  • If merchant said something unrelated to price (greeting, story, compliment):\n' +
+      '    "Merchant says: [translation of what they said]"\n' +
+      '    Example: "Merchant says: his family made this for 20 years" → continue in ' + lang + '\n\n' +
+      '  • If merchant is hesitating, thinking, or gave a non-answer:\n' +
+      '    "Merchant is considering — I am applying pressure"\n\n' +
+      'CRITICAL: NEVER invent or state a price the merchant did not actually say.\n' +
+      'If merchant did NOT name a new price, do NOT say "Merchant says: [number]" — describe what they actually communicated.\n' +
       'The English phrase MUST be in English Roman letters. NEVER say it in ' + lang + ' characters or ' + lang + ' words.\n\n' +
 
       'RULE 2 — DEAL SIGNAL (say this in English when deal is agreed):\n' +
@@ -1255,15 +1269,22 @@
         '<p style="font-size:12px;color:var(--muted2);font-style:italic;">Listening for AI updates...</p>' +
       '</div>' +
 
-      // Action buttons
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">' +
-        '<button id="deal-btn" class="btn-primary" style="margin-top:0;padding:16px 8px;font-size:15px;">🤝 Deal Done</button>' +
-        '<button id="walkaway-btn" class="btn-secondary" style="margin-top:0;padding:16px 8px;font-size:15px;">🚶 Walk Away</button>' +
-      '</div>' +
-      '<p style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px;">When AI says <strong style="color:var(--text);">"Deal confirmed"</strong> tap Deal Done · When AI says <strong style="color:var(--text);">"Walk away"</strong> tap Walk Away</p>' +
+      // Utility buttons — always visible
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
         '<button id="mute-btn" class="btn-secondary" style="margin-top:0;font-size:13px;">🎙 Mute Mic</button>' +
         '<button id="stop-neg-btn" class="btn-danger" style="margin-top:0;font-size:13px;">End Session</button>' +
+      '</div>' +
+
+      // Contextual action popup — slides up when deal/walkaway is relevant
+      '<div id="action-popup" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:990;padding:16px;background:linear-gradient(transparent,var(--bg) 18%);pointer-events:none;">' +
+        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 16px 16px;padding:18px 16px 14px;box-shadow:0 -8px 32px rgba(0,0,0,0.5);pointer-events:all;">' +
+          '<p id="action-popup-label" style="font-size:12px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;"></p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
+            '<button id="deal-btn" class="btn-primary" style="margin-top:0;padding:15px 8px;font-size:15px;">🤝 Accept Deal</button>' +
+            '<button id="walkaway-btn" class="btn-secondary" style="margin-top:0;padding:15px 8px;font-size:15px;">🚶 Walk Away</button>' +
+          '</div>' +
+          '<button id="action-popup-dismiss" style="width:100%;background:none;border:none;color:var(--muted);font-size:12px;padding:4px;cursor:pointer;">Keep negotiating →</button>' +
+        '</div>' +
       '</div>' +
 
       // Deal price overlay — shown when user taps Deal Done
@@ -1287,8 +1308,17 @@
     var statusTitle = document.getElementById('neg-status-title');
     var statusSub   = document.getElementById('neg-status-sub');
     var eventLog    = document.getElementById('event-log');
-    var dealBtn     = document.getElementById('deal-btn');
-    var walkawayBtn = document.getElementById('walkaway-btn');
+    var actionPopup = document.getElementById('action-popup');
+    var popupLabel  = document.getElementById('action-popup-label');
+
+    function showActionPopup(label) {
+      popupLabel.textContent = label || 'Ready to decide?';
+      actionPopup.style.display = 'block';
+    }
+    function hideActionPopup() {
+      actionPopup.style.display = 'none';
+    }
+    document.getElementById('action-popup-dismiss').onclick = hideActionPopup;
 
     function ts() { var d = new Date(); return ('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
 
@@ -1317,21 +1347,22 @@
 
       } else if (evt.type === 'speaking') {
         var turnNum = evt.turn;
+        hideActionPopup(); // dismiss popup while AI is speaking
         if (turnNum === 1) {
           setStatus('🔊', 'AI is speaking…', 'Making opening offer — listen carefully', 'rgba(0,255,136,0.4)');
           logEvent('🗣️', 'Turn 1 — AI making opening offer', 'var(--green)');
         } else {
           setStatus('🔊', 'AI is speaking…', 'Listen for "Merchant says:" in English', 'rgba(0,255,136,0.4)');
-          logEvent('🗣️', 'Turn ' + turnNum + ' — AI speaking', '#ccc');
-        }
-        // After enough turns, give the Deal Done button a subtle glow
-        if (turnNum >= 3) {
-          dealBtn.style.boxShadow = '0 0 0 3px rgba(0,255,136,0.3)';
+          logEvent('🗣️', 'Turn ' + turnNum + ' — AI responding', '#ccc');
         }
 
       } else if (evt.type === 'listening') {
         setStatus('🎤', 'Merchant\'s turn', 'Hold phone toward merchant — AI is listening', 'rgba(255,107,53,0.4)');
         logEvent('🎤', 'Merchant speaking… (turn ' + evt.turn + ')', 'var(--orange)');
+        // Show action popup after turn 2 — enough negotiation has happened
+        if (evt.turn >= 2) {
+          showActionPopup(evt.turn >= 5 ? 'Heard "Deal confirmed" or "Walk away"?' : 'Heard enough? Or keep going');
+        }
 
       } else if (evt.type === 'error') {
         setStatus('❌', 'Error', evt.msg || 'Check API key', 'rgba(255,59,59,0.5)');
