@@ -430,7 +430,7 @@
   // config.js (gitignored) sets window.CONFIG with the real key locally.
   // On GitHub Pages the Action injects the key into the placeholder below.
   if (typeof CONFIG === 'undefined') {
-    var CONFIG = { GEMINI_API_KEY: 'AIzaSyCT2woP2QiR7IfzkAyIurk8yRAkBII0RAc' };
+    var CONFIG = { GEMINI_API_KEY: 'AIzaSyDJWgHeZoiMt8WNKzksTBCEhr7cPnHPxkc' };
   }
 
   // ─── APP STATE ────────────────────────────────────────────────────────────
@@ -1000,7 +1000,7 @@
           '<div style="text-align:center;padding:20px 0;">' +
             '<div style="font-size:40px;margin-bottom:12px;">⚠️</div>' +
             '<p style="font-family:Syne,sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;color:var(--orange);">' + (isKeyError ? 'API Key Error' : 'Analysis Failed') + '</p>' +
-            '<p style="color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.6;">' + (isKeyError ? (typeof CONFIG !== "undefined" && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== "AIzaSyCT2woP2QiR7IfzkAyIurk8yRAkBII0RAc" ? "The Gemini API key was rejected. Check it is valid and has the Gemini API enabled." : "No API key found. Add your Gemini API key — locally via <b>config.js</b>, or via GitHub Secrets for the deployed version.") : msg) + '</p>' +
+            '<p style="color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.6;">' + (isKeyError ? (typeof CONFIG !== "undefined" && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== "AIzaSyDJWgHeZoiMt8WNKzksTBCEhr7cPnHPxkc" ? "The Gemini API key was rejected. Check it is valid and has the Gemini API enabled." : "No API key found. Add your Gemini API key — locally via <b>config.js</b>, or via GitHub Secrets for the deployed version.") : msg) + '</p>' +
             '<button onclick="showScreen(\'capture\')" class="btn-secondary" style="width:auto;padding:10px 24px;">← Go Back</button>' +
           '</div>';
         // Still set a minimal fallback so other screens don't break if user proceeds
@@ -1078,7 +1078,7 @@
         // ── Savings ribbon
         (savingsPct ?
           '<div style="background:rgba(0,255,136,0.06);border-bottom:1px solid rgba(0,255,136,0.15);padding:9px 20px;display:flex;align-items:center;justify-content:space-between;">' +
-            '<span style="font-size:12px;color:var(--green-dim);font-weight:600;">You save</span>' +
+            '<span style="font-size:12px;color:var(--green-dim);font-weight:600;">Max saving possible</span>' +
             '<span style="font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:var(--green);">$' + savedUsd + ' &nbsp;·&nbsp; −' + savingsPct + '%</span>' +
           '</div>'
         : '') +
@@ -1087,6 +1087,7 @@
         '<div style="padding:18px 20px;">' +
           '<p style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">Offer this price</p>' +
           pricePair(suggestedLocal, suggestedUsd, false, 'var(--green)') +
+          (a.reasoning ? '<p style="font-size:12px;color:var(--muted2);margin-top:8px;line-height:1.5;">' + a.reasoning + '</p>' : '') +
         '</div>' +
 
       '</div>' +
