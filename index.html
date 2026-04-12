@@ -425,7 +425,7 @@
   // config.js (gitignored) sets window.CONFIG with the real key locally.
   // On GitHub Pages the Action injects the key into the placeholder below.
   if (typeof CONFIG === 'undefined') {
-    var CONFIG = { GEMINI_API_KEY: 'AIzaSyCIyN_E78NTksDmgFWw1Wau3dQV3smW2xw' };
+    var CONFIG = { GEMINI_API_KEY: 'AIzaSyCT2woP2QiR7IfzkAyIurk8yRAkBII0RAc' };
   }
 
   // ─── APP STATE ────────────────────────────────────────────────────────────
@@ -986,7 +986,7 @@
           '<div style="text-align:center;padding:20px 0;">' +
             '<div style="font-size:40px;margin-bottom:12px;">⚠️</div>' +
             '<p style="font-family:Syne,sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;color:var(--orange);">' + (isKeyError ? 'API Key Error' : 'Analysis Failed') + '</p>' +
-            '<p style="color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.6;">' + (isKeyError ? 'Check that your real Gemini API key is in <b>config.js</b> on your device.' : msg) + '</p>' +
+            '<p style="color:var(--muted);font-size:13px;margin-bottom:16px;line-height:1.6;">' + (isKeyError ? (typeof CONFIG !== "undefined" && CONFIG.GEMINI_API_KEY && CONFIG.GEMINI_API_KEY !== "AIzaSyCT2woP2QiR7IfzkAyIurk8yRAkBII0RAc" ? "The Gemini API key was rejected. Check it is valid and has the Gemini API enabled." : "No API key found. Add your Gemini API key — locally via <b>config.js</b>, or via GitHub Secrets for the deployed version.") : msg) + '</p>' +
             '<button onclick="showScreen(\'capture\')" class="btn-secondary" style="width:auto;padding:10px 24px;">← Go Back</button>' +
           '</div>';
         // Still set a minimal fallback so other screens don't break if user proceeds
