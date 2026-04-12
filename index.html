@@ -1311,6 +1311,7 @@
     var eventLog    = document.getElementById('event-log');
     var actionPopup = document.getElementById('action-popup');
     var popupLabel  = document.getElementById('action-popup-label');
+    var popupDismissedAtTurn = -99; // track when user dismissed so we don't re-show too soon
 
     function showActionPopup(label) {
       popupLabel.textContent = label || 'Ready to decide?';
@@ -1319,7 +1320,10 @@
     function hideActionPopup() {
       actionPopup.style.display = 'none';
     }
-    document.getElementById('action-popup-dismiss').onclick = hideActionPopup;
+    document.getElementById('action-popup-dismiss').onclick = function() {
+      popupDismissedAtTurn = _turnCount; // remember which turn they dismissed at
+      hideActionPopup();
+    };
 
     function ts() { var d = new Date(); return ('0'+d.getMinutes()).slice(-2)+':'+('0'+d.getSeconds()).slice(-2); }
 
@@ -1360,9 +1364,15 @@
       } else if (evt.type === 'listening') {
         setStatus('🎤', 'Merchant\'s turn', 'Hold phone toward merchant — AI is listening', 'rgba(255,107,53,0.4)');
         logEvent('🎤', 'Merchant speaking… (turn ' + evt.turn + ')', 'var(--orange)');
-        // Show action popup after turn 2 — enough negotiation has happened
-        if (evt.turn >= 2) {
-          showActionPopup(evt.turn >= 5 ? 'Heard "Deal confirmed" or "Walk away"?' : 'Heard enough? Or keep going');
+        // Show popup only after meaningful negotiation (turn 5+)
+        // and not within 3 turns of the user dismissing it
+        var enoughTurns = evt.turn >= 5;
+        var cooldownOver = evt.turn >= popupDismissedAtTurn + 3;
+        if (enoughTurns && cooldownOver) {
+          var label = evt.turn >= 8
+            ? 'Heard a deal? Or time to walk away?'
+            : 'Getting close? Ready to decide?';
+          showActionPopup(label);
         }
 
       } else if (evt.type === 'error') {
