@@ -13,7 +13,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Inject API key
-        run: sed -i "s/YOUR_API_KEY_HERE/${{ secrets.GEMINI_API_KEY }}/g" index.html
+        run: |
+          if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+            echo "ERROR: GEMINI_API_KEY secret is not set in this repository!"
+            exit 1
+          fi
+          sed -i "s|YOUR_API_KEY_HERE|${{ secrets.GEMINI_API_KEY }}|g" index.html
+          echo "Key injection check:"
+          grep -c "YOUR_API_KEY_HERE" index.html && echo "WARNING: placeholder still present!" || echo "OK - placeholder replaced successfully"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
