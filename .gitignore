@@ -12,5 +12,8 @@ node_modules/
 # Logs
 *.log
 
+# Build output — never commit (contains injected API key)
+dist/
+
 # Claude internal
 .claude/
