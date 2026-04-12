@@ -829,34 +829,32 @@
     var systemPrompt =
       'You are negotiating via text message on behalf of a tourist at ' + location + ', speaking ' + lang + ' with a local merchant.\n\n' +
 
-      'RESPONSE FORMAT — always use this exact structure, every single reply:\n' +
-      '~~~LOCAL~~~\n' +
-      '[Your message in ' + lang + ' — this is what the merchant reads on screen]\n' +
-      '~~~EN~~~\n' +
-      '[English translation for the tourist]\n' +
-      'YES: [A natural short phrase in ' + lang + ' meaning "I accept / I agree to this price"]\n' +
-      'NO: [A natural short phrase in ' + lang + ' meaning "No, too expensive / I disagree"]\n\n' +
+      'RESPONSE FORMAT — every reply must follow this structure exactly (no extra text outside these fields):\n' +
+      'LOCAL: [Your message in ' + lang + ' — keep it 1-3 sentences, this is what the merchant reads]\n' +
+      'EN: [English translation of the above, for the tourist]\n' +
+      'YES: [A short natural phrase in ' + lang + ' meaning "Yes, I agree / I accept this price"]\n' +
+      'NO: [A short natural phrase in ' + lang + ' meaning "No, too expensive"]\n\n' +
 
       'CONTEXT:\n' +
       '- Item: ' + product + '\n' +
       '- Merchant asking: ' + (a.quoted_price || 'see conversation') + '\n' +
-      '- Walk-away limit (your maximum, never reveal this): ' + maxPriceStr + '\n' +
+      '- Walk-away limit (your maximum, NEVER reveal): ' + maxPriceStr + '\n' +
       '- Opening offer target: around ' + openingStr + '\n' +
       '- Negotiation tone: ' + (state.tone || 'friendly') + '\n\n' +
 
       'NEGOTIATION RULES:\n' +
-      '- Open with genuine interest ("I really like this, it\'s beautiful") but express the price is too high\n' +
+      '- Open warmly ("I really like this!") but say the price is too high\n' +
       '- Start 35-40% below walk-away limit. Never reveal your max\n' +
-      '- Use varied techniques across turns: anchoring low, expressing disappointment, mentioning you saw similar elsewhere, hinting you might leave, making small concessions reluctantly\n' +
-      '- Keep messages SHORT (1-3 sentences max). Natural, human tone\n' +
-      '- Concede slowly — never jump more than 10-15% per turn\n' +
-      '- Never agree to anything above the walk-away limit\n\n' +
+      '- Vary your techniques: anchor low, show disappointment, mention seeing it cheaper elsewhere, hint at walking away, concede slowly\n' +
+      '- Keep messages SHORT (1-3 sentences). Natural, human tone\n' +
+      '- Never jump more than 10-15% per turn\n' +
+      '- Never agree above the walk-away limit\n\n' +
 
-      'SIGNALS (append after YES/NO lines when appropriate):\n' +
-      'DEAL: [agreed price] ' + currCode + '\n' +
+      'SIGNALS — append on its own line after YES/NO when appropriate:\n' +
+      'DEAL: [final agreed price] ' + currCode + '\n' +
       'WALKAWAY\n\n' +
 
-      'Start now with a warm, genuine opening that shows you like the item but the price is too high.';
+      'Start now. Write your opening message using the LOCAL/EN/YES/NO format above.';
 
     var history = [];
 
@@ -868,7 +866,11 @@
       var body = {
         system_instruction: { parts: [{ text: systemPrompt }] },
         contents: contents,
-        generationConfig: { temperature: 0.85, maxOutputTokens: 350 }
+        generationConfig: {
+          temperature: 0.85,
+          maxOutputTokens: 400,
+          thinkingConfig: { thinkingBudget: 0 }
+        }
       };
       var res = await fetch(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' + apiKey,
@@ -880,7 +882,13 @@
         throw new Error(msg);
       }
       var data = await res.json();
-      var text = ((data.candidates[0].content.parts[0].text) || '').trim();
+      // Gemini 2.5 Flash may return thinking tokens in parts marked thought:true — skip those
+      var rawParts = (data.candidates[0].content.parts || []);
+      var text = rawParts
+        .filter(function(p) { return !p.thought && typeof p.text === 'string'; })
+        .map(function(p) { return p.text; })
+        .join('')
+        .trim();
       history.push({ role: 'model', parts: [{ text: text }] });
       onMessage(text);
     }
@@ -1676,20 +1684,38 @@
     var negotiation;
 
     // ── parse AI response ─────────────────────────────────────────────────
+    // Expected format (line-prefixed):
+    //   LOCAL: [message in local language]
+    //   EN: [English translation]
+    //   YES: [local yes phrase]
+    //   NO: [local no phrase]
+    //   DEAL: [price] [currency]   (optional)
+    //   WALKAWAY                   (optional)
     function parseAIResponse(raw) {
-      var text = raw, deal = null, walkaway = false;
+      var text = raw || '';
+      var deal = null, walkaway = false;
+
       var dealMatch = text.match(/^DEAL:\s*([^\n]+)/mi);
-      if (dealMatch) { deal = dealMatch[1].trim(); text = text.replace(/^DEAL:[^\n]*/mi, '').trim(); }
-      if (/^WALKAWAY\s*$/mi.test(text)) { walkaway = true; text = text.replace(/^WALKAWAY\s*$/mi, '').trim(); }
-      var yesMatch = text.match(/^YES:\s*(.+)$/mi);
-      var noMatch  = text.match(/^NO:\s*(.+)$/mi);
-      var yesLocal = yesMatch ? yesMatch[1].trim() : '';
-      var noLocal  = noMatch  ? noMatch[1].trim()  : '';
-      text = text.replace(/^YES:[^\n]*/mi,'').replace(/^NO:[^\n]*/mi,'').trim();
-      var localMatch = text.match(/~~~LOCAL~~~\s*([\s\S]*?)~~~EN~~~/i);
-      var enMatch    = text.match(/~~~EN~~~\s*([\s\S]*?)$/i);
-      var local = localMatch ? localMatch[1].trim() : text.split('\n')[0].trim();
-      var en    = enMatch    ? enMatch[1].replace(/^YES:[^\n]*/mi,'').replace(/^NO:[^\n]*/mi,'').trim() : '';
+      if (dealMatch) { deal = dealMatch[1].trim(); }
+
+      if (/^WALKAWAY\s*$/mi.test(text)) { walkaway = true; }
+
+      var localMatch = text.match(/^LOCAL:\s*(.+?)(?=\n(?:EN|YES|NO|DEAL|WALKAWAY):|\s*$)/msi);
+      var enMatch    = text.match(/^EN:\s*(.+?)(?=\n(?:LOCAL|YES|NO|DEAL|WALKAWAY):|\s*$)/msi);
+      var yesMatch   = text.match(/^YES:\s*(.+)$/mi);
+      var noMatch    = text.match(/^NO:\s*(.+)$/mi);
+
+      var local    = localMatch ? localMatch[1].trim() : '';
+      var en       = enMatch    ? enMatch[1].trim()    : '';
+      var yesLocal = yesMatch   ? yesMatch[1].trim()   : '';
+      var noLocal  = noMatch    ? noMatch[1].trim()    : '';
+
+      // Fallback: if LOCAL: prefix is missing, use first non-empty line as local text
+      if (!local) {
+        var lines = text.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+        local = lines[0] || text.trim();
+      }
+
       return { local: local, en: en, yesLocal: yesLocal, noLocal: noLocal, deal: deal, walkaway: walkaway };
     }
 
