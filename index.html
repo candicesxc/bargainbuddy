@@ -841,7 +841,24 @@
         '<select id="language-select"></select>' +
       '</div>' +
 
-      '<button id="start-btn" class="btn-primary" style="margin-top:8px;">Let\'s Shop →</button>';
+      '<button id="start-btn" class="btn-primary" style="margin-top:8px;">Let\'s Shop →</button>' +
+
+      '<div style="text-align:center;margin-top:auto;padding-top:28px;padding-bottom:max(20px,env(safe-area-inset-bottom));">' +
+        '<button id="why-btn" style="background:none;border:none;color:var(--muted);font-size:12px;font-family:Manrope,sans-serif;font-weight:600;letter-spacing:0.05em;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:8px 12px;touch-action:manipulation;">' +
+          '<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--muted);font-size:11px;flex-shrink:0;">?</span>' +
+          'Why we made this' +
+        '</button>' +
+      '</div>' +
+
+      '<div id="why-modal" style="display:none;position:fixed;inset:0;z-index:1000;align-items:flex-end;justify-content:center;">' +
+        '<div id="why-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.7);"></div>' +
+        '<div style="position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:28px 24px;padding-bottom:max(28px,env(safe-area-inset-bottom));width:100%;max-width:520px;box-shadow:0 -8px 40px rgba(0,0,0,0.5);z-index:1;">' +
+          '<div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 20px;"></div>' +
+          '<p style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);margin-bottom:12px;">Why we built this</p>' +
+          '<p style="font-size:14px;color:var(--muted2);line-height:1.7;margin-bottom:24px;">We built BargainBuddy because we love to travel but hate that sinking feeling after leaving a market stall wondering if we just overpaid by three times. Our mission isn\'t just about saving money. It\'s about giving travellers the confidence to engage authentically, so every interaction feels like a genuine exchange rather than a one-sided transaction. BargainBuddy puts a real-time AI negotiator in your pocket that speaks the local language, understands local prices, and fights your corner so you can focus on the experience, not the anxiety.</p>' +
+          '<button id="why-close-btn" class="btn-primary" style="margin-top:0;touch-action:manipulation;">Got it</button>' +
+        '</div>' +
+      '</div>';
 
     var input = document.getElementById('location-input');
     var select = document.getElementById('language-select');
@@ -872,6 +889,13 @@
       state.detectedLanguage = select.value;
       showScreen('capture');
     };
+
+    var whyModal = document.getElementById('why-modal');
+    function openWhyModal() { whyModal.style.display = 'flex'; }
+    function closeWhyModal() { whyModal.style.display = 'none'; }
+    document.getElementById('why-btn').onclick = openWhyModal;
+    document.getElementById('why-close-btn').onclick = closeWhyModal;
+    document.getElementById('why-backdrop').onclick = closeWhyModal;
 
     tryGPS().then(function(loc) {
       if (loc) {
