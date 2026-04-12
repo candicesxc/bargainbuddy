@@ -1,73 +1,63 @@
-# React + TypeScript + Vite
+# BargainBuddy 🛍️
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Your AI-powered market negotiation companion. Point it at a price tag, and it haggles for you — in the local language.
 
-Currently, two official plugins are available:
+Built for the Google AI Hackathon by **Fair Slice**.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## What it does
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Traveling abroad and not sure if you're getting ripped off at the market? BargainBuddy has you covered:
 
-## Expanding the ESLint configuration
+1. **Snap a photo** of the product and price tag
+2. **Get an instant analysis** — fair market price, tourist markup rating, and suggested offer
+3. **Go live** — the AI negotiates out loud with the merchant in their language while narrating prices back to you in English
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+No language skills required.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Powered by Google AI
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Feature | Google Product |
+|---|---|
+| Price tag reading & market analysis | **Gemini 2.5 Flash** (vision + structured JSON output) |
+| Live voice negotiation | **Gemini 2.5 Flash Native Audio** via Multimodal Live API (WebSocket) |
+| Demo video & presentation | **NotebookLM** |
+
+---
+
+## Run locally
+
+Serve `index.html` with any static server:
+
+```bash
+python3 -m http.server 3001
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open `http://localhost:3001`, then create a `config.js` next to `index.html`:
 
 ```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+var CONFIG = {
+  GEMINI_API_KEY: 'your-key-here'
+};
 ```
+
+`config.js` is gitignored — your key stays local.
+
+---
+
+## Deploy to GitHub Pages
+
+1. Fork this repo
+2. Go to **Settings → Secrets and variables → Actions**
+3. Add a secret named `GEMINI_API_KEY` with your Gemini API key
+4. Go to **Settings → Pages** → set source to **Deploy from a branch** → branch: `gh-pages`
+5. Push to `main` — the GitHub Action injects the key and deploys automatically
+
+---
+
+## Tech
+
+Single-file vanilla JS — no build step, no framework, no dependencies. Just `index.html` and a Gemini API key.

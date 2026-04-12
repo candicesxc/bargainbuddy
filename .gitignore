@@ -1,1 +1,16 @@
+# API keys — never commit this
 config.js
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Node
+node_modules/
+.vite/
+
+# Logs
+*.log
+
+# Claude internal
+.claude/
