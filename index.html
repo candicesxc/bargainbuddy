@@ -444,6 +444,7 @@
     merchantAskedPrice: null,   // raw string e.g. "600 INR" or "600"
     maxPrice: null,
     tone: 'friendly',
+    mode: 'audio',
     voice: 'Puck',
     outcome: null,
     finalPrice: null,
@@ -1195,6 +1196,14 @@
       '</div>' +
 
       '<div class="card">' +
+        '<label>Negotiation mode</label>' +
+        '<div class="tone-group" style="margin-top:10px;">' +
+          '<button class="tone-btn mode-btn ' + (state.mode === 'audio' ? 'active' : '') + '" data-mode="audio">🎤 Audio</button>' +
+          '<button class="tone-btn mode-btn ' + (state.mode === 'text' ? 'active' : '') + '" data-mode="text">💬 Text</button>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="card" id="voice-card">' +
         '<label>AI Voice</label>' +
         '<select id="voice-select">' +
           '<option value="Puck">Puck (Default)</option>' +
@@ -1220,10 +1229,20 @@
       };
     });
 
+    document.querySelectorAll('.mode-btn').forEach(function(btn) {
+      btn.onclick = function() {
+        document.querySelectorAll('.mode-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        state.mode = btn.dataset.mode;
+        document.getElementById('voice-card').style.display = state.mode === 'audio' ? 'block' : 'none';
+      };
+    });
+    document.getElementById('voice-card').style.display = state.mode === 'audio' ? 'block' : 'none';
+
     document.getElementById('start-neg-btn').onclick = function() {
       state.maxPrice = parseFloat(document.getElementById('max-price').value);
       state.voice = document.getElementById('voice-select').value;
-      showScreen('negotiation');
+      showScreen(state.mode === 'text' ? 'text-negotiation' : 'negotiation');
     };
   }
 
