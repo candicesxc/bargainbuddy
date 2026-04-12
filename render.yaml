@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: bargainbuddy
+    env: static
+    buildCommand: bash build.sh
+    staticPublishPath: dist
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
