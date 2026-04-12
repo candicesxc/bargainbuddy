@@ -1284,14 +1284,17 @@
       '</div>' +
 
       // Contextual action popup — slides up when deal/walkaway is relevant
-      '<div id="action-popup" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:990;padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 22%);pointer-events:none;">' +
-        '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 16px 16px;padding:18px 16px 12px;box-shadow:0 -8px 32px rgba(0,0,0,0.5);pointer-events:all;">' +
-          '<p id="action-popup-label" style="font-size:12px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;"></p>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">' +
-            '<button id="deal-btn" class="btn-primary" style="margin-top:0;padding:15px 8px;font-size:15px;">🤝 Accept Deal</button>' +
-            '<button id="walkaway-btn" class="btn-secondary" style="margin-top:0;padding:15px 8px;font-size:15px;">🚶 Walk Away</button>' +
+      '<div id="action-popup" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:990;">' +
+        '<div style="height:40px;background:linear-gradient(transparent,var(--bg));pointer-events:none;"></div>' +
+        '<div style="background:var(--bg);padding:0 16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">' +
+          '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:18px 16px 14px;box-shadow:0 -8px 32px rgba(0,0,0,0.5);">' +
+            '<p id="action-popup-label" style="font-size:12px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;"></p>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">' +
+              '<button id="deal-btn" class="btn-primary" style="margin-top:0;padding:15px 8px;font-size:15px;">🤝 Accept Deal</button>' +
+              '<button id="walkaway-btn" class="btn-secondary" style="margin-top:0;padding:15px 8px;font-size:15px;">🚶 Walk Away</button>' +
+            '</div>' +
+            '<button id="action-popup-dismiss" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-size:13px;font-weight:600;font-family:Manrope,sans-serif;padding:12px;cursor:pointer;touch-action:manipulation;">Keep negotiating →</button>' +
           '</div>' +
-          '<button id="action-popup-dismiss" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-size:13px;font-weight:600;font-family:Manrope,sans-serif;padding:12px;cursor:pointer;letter-spacing:0.01em;">Keep negotiating →</button>' +
         '</div>' +
       '</div>' +
 
