@@ -1078,7 +1078,7 @@
         // ── Savings ribbon
         (savingsPct ?
           '<div style="background:rgba(0,255,136,0.06);border-bottom:1px solid rgba(0,255,136,0.15);padding:9px 20px;display:flex;align-items:center;justify-content:space-between;">' +
-            '<span style="font-size:12px;color:var(--green-dim);font-weight:600;">You save</span>' +
+            '<span style="font-size:12px;color:var(--green-dim);font-weight:600;">Max saving possible</span>' +
             '<span style="font-family:Manrope,sans-serif;font-size:13px;font-weight:700;color:var(--green);">$' + savedUsd + ' &nbsp;·&nbsp; −' + savingsPct + '%</span>' +
           '</div>'
         : '') +
@@ -1087,6 +1087,7 @@
         '<div style="padding:18px 20px;">' +
           '<p style="font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--green);margin-bottom:8px;">Offer this price</p>' +
           pricePair(suggestedLocal, suggestedUsd, false, 'var(--green)') +
+          (a.reasoning ? '<p style="font-size:12px;color:var(--muted2);margin-top:8px;line-height:1.5;">' + a.reasoning + '</p>' : '') +
         '</div>' +
 
       '</div>' +
