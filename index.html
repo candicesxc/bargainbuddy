@@ -1598,6 +1598,211 @@
     };
   }
 
+  // ─── SCREEN: TEXT NEGOTIATION ─────────────────────────────────────────────
+  async function initTextNegotiationScreen() {
+    var container = document.getElementById('screen-text-negotiation');
+    var a = state.analysis || {};
+    var currCode = state.currCode || '';
+
+    function fmtBoth(localStr, usdNum) {
+      var parts = [];
+      if (localStr) parts.push(localStr);
+      if (usdNum != null) parts.push('$' + usdNum + ' USD');
+      return parts.length ? parts.join('  ·  ') : '—';
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    container.innerHTML =
+      '<div id="pill-container-text-neg"></div>' +
+
+      // Price context header
+      '<div class="card" style="padding:0;overflow:hidden;margin-bottom:12px;">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;">' +
+          '<div style="padding:12px 16px;border-right:1px solid var(--border);">' +
+            '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;">Merchant asks</p>' +
+            '<p style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:#777;">' + fmtBoth(a.quoted_price, a.quoted_price_usd) + '</p>' +
+          '</div>' +
+          '<div style="padding:12px 16px;background:rgba(0,255,136,0.04);">' +
+            '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--green);margin-bottom:4px;">Fair price</p>' +
+            '<p style="font-family:Manrope,sans-serif;font-weight:700;font-size:15px;color:var(--green);">' + fmtBoth(a.suggested_local, a.suggested_usd) + '</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      // Chat area
+      '<div id="text-chat" style="min-height:180px;margin-bottom:12px;display:flex;flex-direction:column;gap:12px;">' +
+        '<div id="text-thinking" style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">✦ AI is preparing opening offer…</div>' +
+      '</div>' +
+
+      // Traveller price input bar (sticky bottom)
+      '<div style="position:sticky;bottom:0;background:var(--bg);padding:10px 0 max(12px,env(safe-area-inset-bottom));">' +
+        '<div style="display:flex;gap:8px;align-items:center;">' +
+          '<div style="flex:1;position:relative;">' +
+            '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;font-weight:700;">$</span>' +
+            '<input type="number" id="traveller-price-input" placeholder="Suggest your price (USD)" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:12px 12px 12px 26px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:14px;font-family:Manrope,sans-serif;outline:none;">' +
+          '</div>' +
+          '<button id="traveller-price-send" style="background:var(--green);color:#000;border:none;border-radius:12px;padding:12px 16px;font-size:13px;font-weight:700;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap;touch-action:manipulation;flex-shrink:0;">Send →</button>' +
+        '</div>' +
+      '</div>' +
+
+      // Merchant price keypad modal
+      '<div id="merchant-price-modal" style="display:none;position:fixed;inset:0;z-index:1000;align-items:flex-end;justify-content:center;">' +
+        '<div id="merchant-price-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.7);"></div>' +
+        '<div style="position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:24px 20px;padding-bottom:max(24px,env(safe-area-inset-bottom));width:100%;max-width:520px;z-index:1;">' +
+          '<div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;"></div>' +
+          '<p style="font-size:13px;font-weight:700;color:var(--muted);text-align:center;margin-bottom:12px;">Merchant\'s offer (' + (currCode || 'local currency') + ')</p>' +
+          '<input type="number" id="merchant-price-input" inputmode="numeric" placeholder="Enter amount" style="width:100%;box-sizing:border-box;font-family:Manrope,sans-serif;font-size:28px;font-weight:800;text-align:center;background:var(--bg3);border:2px solid var(--border);border-radius:12px;padding:12px 8px;color:var(--text);outline:none;margin-bottom:16px;">' +
+          '<button id="merchant-price-confirm" class="btn-primary" style="margin-top:0;width:100%;touch-action:manipulation;">Confirm price →</button>' +
+          '<button id="merchant-price-cancel" class="btn-secondary" style="margin-top:8px;width:100%;font-size:13px;touch-action:manipulation;">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    renderLocationPill(document.getElementById('pill-container-text-neg'));
+
+    var chat = document.getElementById('text-chat');
+    var sessionDone = false;
+    var negotiation;
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+    function parseAIResponse(raw) {
+      var text = raw;
+      var deal = null, walkaway = false;
+      var dealMatch = text.match(/DEAL:\s*([^\n]+)/i);
+      if (dealMatch) { deal = dealMatch[1].trim(); text = text.replace(/DEAL:[^\n]*/i, '').trim(); }
+      if (/WALKAWAY/i.test(text)) { walkaway = true; text = text.replace(/WALKAWAY/i, '').trim(); }
+      var sections = text.split(/\n---\n/);
+      var local = (sections[0] || '').trim();
+      var en = sections[1] ? sections[1].replace(/^EN:\s*/i, '').trim() : '';
+      return { local: local, en: en, deal: deal, walkaway: walkaway };
+    }
+
+    function disableAllMerchantBtns() {
+      document.querySelectorAll('.merchant-btns button').forEach(function(b) {
+        b.disabled = true; b.style.opacity = '0.4';
+      });
+    }
+
+    function showThinkingSpinner() {
+      var existing = document.getElementById('text-thinking-spinner');
+      if (existing) return;
+      var el = document.createElement('div');
+      el.id = 'text-thinking-spinner';
+      el.style.cssText = 'text-align:center;padding:14px;color:var(--muted);font-size:13px;';
+      el.textContent = '✦ AI is responding…';
+      chat.appendChild(el);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function hideThinkingSpinner() {
+      var el = document.getElementById('text-thinking-spinner');
+      if (el) el.remove();
+      var init = document.getElementById('text-thinking');
+      if (init) init.remove();
+    }
+
+    function doFinish(outcome, price) {
+      if (sessionDone) return;
+      sessionDone = true;
+      state.outcome = outcome;
+      state.finalPrice = price;
+      state.exchRate = state._exchRate;
+      state.currCode = state.currCode;
+      showScreen('result');
+    }
+
+    // ── render AI message bubble ──────────────────────────────────────────────
+    function renderAIMessage(parsed) {
+      hideThinkingSpinner();
+      var bubble = document.createElement('div');
+      bubble.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:16px;';
+      bubble.innerHTML =
+        '<p style="font-size:18px;font-weight:700;color:var(--text);line-height:1.5;margin-bottom:' + (parsed.en ? '8px' : '12px') + ';">' + escHtml(parsed.local) + '</p>' +
+        (parsed.en ? '<p style="font-size:11px;color:var(--muted);line-height:1.4;margin-bottom:12px;">🇬🇧 ' + escHtml(parsed.en) + '</p>' : '') +
+        '<div class="merchant-btns" style="display:flex;flex-direction:column;gap:8px;">' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+            '<button class="merchant-yes" style="background:rgba(0,255,136,0.12);border:1px solid var(--green);border-radius:10px;color:var(--green);font-size:14px;font-weight:700;font-family:Manrope,sans-serif;padding:13px 8px;cursor:pointer;touch-action:manipulation;">✅ Yes</button>' +
+            '<button class="merchant-no" style="background:rgba(255,59,59,0.08);border:1px solid var(--red);border-radius:10px;color:var(--red);font-size:14px;font-weight:700;font-family:Manrope,sans-serif;padding:13px 8px;cursor:pointer;touch-action:manipulation;">❌ No</button>' +
+          '</div>' +
+          '<button class="merchant-suggest" style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-size:13px;font-weight:600;font-family:Manrope,sans-serif;padding:11px;cursor:pointer;touch-action:manipulation;">💰 Suggest a price</button>' +
+        '</div>';
+
+      chat.appendChild(bubble);
+      chat.scrollTop = chat.scrollHeight;
+
+      // Wire this bubble's buttons
+      bubble.querySelector('.merchant-yes').onclick = function() {
+        disableAllMerchantBtns();
+        showThinkingSpinner();
+        negotiation.send('Merchant agrees to the price.');
+      };
+      bubble.querySelector('.merchant-no').onclick = function() {
+        disableAllMerchantBtns();
+        showThinkingSpinner();
+        negotiation.send('Merchant refuses and disagrees.');
+      };
+      bubble.querySelector('.merchant-suggest').onclick = function() {
+        document.getElementById('merchant-price-modal').style.display = 'flex';
+        setTimeout(function() { document.getElementById('merchant-price-input').focus(); }, 80);
+      };
+    }
+
+    // ── handle incoming AI text ───────────────────────────────────────────────
+    function handleAIText(raw) {
+      var parsed = parseAIResponse(raw);
+      renderAIMessage(parsed);
+
+      if (parsed.deal) {
+        var num = parseFloat(parsed.deal);
+        var usd = (!isNaN(num) && state._exchRate) ? Math.round(num / state._exchRate * 100) / 100 : (isNaN(num) ? null : num);
+        setTimeout(function() { doFinish('deal', usd); }, 1800);
+        return;
+      }
+      if (parsed.walkaway) {
+        setTimeout(function() { doFinish('walkaway', null); }, 1800);
+      }
+    }
+
+    // ── traveller price input ─────────────────────────────────────────────────
+    document.getElementById('traveller-price-send').onclick = function() {
+      var val = document.getElementById('traveller-price-input').value.trim();
+      if (!val || !negotiation) return;
+      disableAllMerchantBtns();
+      showThinkingSpinner();
+      document.getElementById('traveller-price-input').value = '';
+      negotiation.send('Traveller suggests: $' + val + ' USD. Please offer this to the merchant in ' + (state.detectedLanguage || 'the local language') + '.');
+    };
+
+    // ── merchant price modal ──────────────────────────────────────────────────
+    function closeMerchantModal() {
+      document.getElementById('merchant-price-modal').style.display = 'none';
+    }
+    document.getElementById('merchant-price-backdrop').onclick = closeMerchantModal;
+    document.getElementById('merchant-price-cancel').onclick = closeMerchantModal;
+    document.getElementById('merchant-price-confirm').onclick = function() {
+      var val = document.getElementById('merchant-price-input').value.trim();
+      if (!val || !negotiation) return;
+      closeMerchantModal();
+      document.getElementById('merchant-price-input').value = '';
+      disableAllMerchantBtns();
+      showThinkingSpinner();
+      negotiation.send('Merchant offers: ' + val + ' ' + (currCode || 'local currency') + '.');
+    };
+
+    // ── start ─────────────────────────────────────────────────────────────────
+    try {
+      negotiation = await startTextNegotiation(state, handleAIText);
+    } catch(e) {
+      hideThinkingSpinner();
+      var errEl = document.getElementById('text-thinking') || document.createElement('div');
+      errEl.style.cssText = 'text-align:center;padding:20px;color:var(--red);font-size:13px;';
+      errEl.textContent = '❌ ' + e.message;
+      if (!errEl.parentNode) chat.appendChild(errEl);
+    }
+  }
+
   // ─── SCREEN: RESULT ───────────────────────────────────────────────────────
   function initResultScreen() {
     var container = document.getElementById('screen-result');
