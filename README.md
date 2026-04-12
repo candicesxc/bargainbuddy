@@ -2,19 +2,21 @@
 
 Your AI-powered market negotiation companion. Point it at a price tag, and it haggles for you — in the local language.
 
-Built for the Google AI Hackathon by **Fair Slice**.
+🔗 **[Try it live → candiceshen.com/bargainbuddy](https://candiceshen.com/bargainbuddy/)**
+
+Built for the **Google x Yale Hackathon 2026**.
 
 ---
 
-## What it does
+## How it works
 
 Traveling abroad and not sure if you're getting ripped off at the market? BargainBuddy has you covered:
 
 1. **Snap a photo** of the product and price tag
-2. **Get an instant analysis** — fair market price, tourist markup rating, and suggested offer
-3. **Go live** — the AI negotiates out loud with the merchant in their language while narrating prices back to you in English
+2. **Get an instant analysis** — fair market price, tourist markup rating, and suggested offer in both local currency and USD
+3. **Go live** — the AI negotiates out loud with the merchant in their language, narrating every merchant response back to you in English in real time
 
-No language skills required.
+No language skills required. Point, analyze, negotiate.
 
 ---
 
@@ -48,13 +50,14 @@ var CONFIG = {
 
 ---
 
-## Deploy to GitHub Pages
+## Team
 
-1. Fork this repo
-2. Go to **Settings → Secrets and variables → Actions**
-3. Add a secret named `GEMINI_API_KEY` with your Gemini API key
-4. Go to **Settings → Pages** → set source to **Deploy from a branch** → branch: `gh-pages`
-5. Push to `main` — the GitHub Action injects the key and deploys automatically
+| Name | GitHub |
+|---|---|
+| Candice Shen | [@candicesxc](https://github.com/candicesxc) |
+| Nina Chung | [@ninaychung](https://github.com/ninaychung) |
+| Yuan Lee | |
+| Rajat Garg | |
 
 ---
 
