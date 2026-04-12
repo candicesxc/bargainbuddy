@@ -1,8 +1,7 @@
-name: Deploy to GitHub Pages
+name: Deploy to GitHub Pages (disabled — using Render)
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch: # manual trigger only, no longer runs on push
 
 jobs:
   deploy:
@@ -19,8 +18,6 @@ jobs:
             exit 1
           fi
           sed -i "s|YOUR_API_KEY_HERE|${{ secrets.GEMINI_API_KEY }}|g" index.html
-          echo "Key injection check:"
-          grep -c "YOUR_API_KEY_HERE" index.html && echo "WARNING: placeholder still present!" || echo "OK - placeholder replaced successfully"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
