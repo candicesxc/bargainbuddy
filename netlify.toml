@@ -1,0 +1,6 @@
+[build]
+  command = "mkdir -p dist && sed 's|YOUR_API_KEY_HERE|'\"$GEMINI_API_KEY\"'|g' index.html > dist/index.html"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "18"
