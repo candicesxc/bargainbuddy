@@ -827,7 +827,8 @@
     var openingStr = openingOffer ? '$' + openingOffer + ' USD' : 'about 60% of the walk-away limit';
 
     var systemPrompt =
-      '⚠️ NEVER break character. NEVER say "I\'m sorry", "we seem stuck", "as an AI", or any meta-commentary. You are a human negotiator. Just keep negotiating.\n\n' +
+      '⚠️ NEVER break character. NEVER say "I\'m sorry", "we seem stuck", "as an AI", or any meta-commentary. You are a human negotiator. Just keep negotiating.\n' +
+      '⚠️ NEVER assume the merchant\'s gender. Do NOT use gendered address forms such as "auntie", "uncle", "sir", "ma\'am", "阿姨", "叔叔", "おばさん", "คุณป้า" etc. Address the merchant neutrally at all times.\n\n' +
 
       'You are negotiating prices at a market in ' + location + ' on behalf of a tourist. The merchant speaks ' + lang + '. The tourist does not speak ' + lang + '.\n' +
       'The phone screen is shared — the merchant reads the LOCAL field, the tourist reads the EN field.\n\n' +
@@ -1231,9 +1232,39 @@
   function initPreferencesScreen() {
     var container = document.getElementById('screen-preferences');
     var a = state.analysis || {};
-    var suggestedUsd = a.suggested_usd || '';
-    // Default walk-away: the AI's suggested price (what they should pay)
-    var defaultMax = state.maxPrice || suggestedUsd;
+
+    // Derive currency and exchange rate from analysis data
+    var currCode = state.currCode || a.quoted_currency || '';
+    if (a.quoted_currency) state.currCode = a.quoted_currency;
+
+    // Parse a local-currency number from strings like "100 RMB", "₹500", "฿80"
+    function parseLocalNum(str) {
+      if (!str) return null;
+      var m = String(str).replace(/,/g,'').match(/\d+\.?\d*/);
+      return m ? parseFloat(m[0]) : null;
+    }
+    var quotedLocalNum  = parseLocalNum(a.quoted_price);
+    var fairLocalNum    = parseLocalNum(a.suggested_local);
+    var quotedUsdNum    = a.quoted_price_usd  || null;
+    var fairUsdNum      = a.suggested_usd     || null;
+
+    // Approximate exchange rate
+    var approxExchRate = 1;
+    if (quotedLocalNum && quotedUsdNum) approxExchRate = quotedLocalNum / quotedUsdNum;
+    else if (fairLocalNum && fairUsdNum) approxExchRate = fairLocalNum / fairUsdNum;
+    state._approxExchRate = approxExchRate;
+
+    // Default walk-away = (merchant asking + fair price) / 2
+    var canUseLocal = !!currCode && quotedLocalNum != null && fairLocalNum != null;
+    var defaultLocalVal = canUseLocal ? Math.round((quotedLocalNum + fairLocalNum) / 2) : null;
+    var defaultUsdVal   = (quotedUsdNum && fairUsdNum) ? Math.round((quotedUsdNum + fairUsdNum) / 2 * 100) / 100
+                          : (a.suggested_usd || state.maxPrice || '');
+    // Step = 10% of price gap
+    var localStep = canUseLocal ? Math.max(1, Math.round(Math.abs(quotedLocalNum - fairLocalNum) * 0.10)) : 5;
+    var usdStep   = (quotedUsdNum && fairUsdNum) ? Math.max(0.5, Math.round(Math.abs(quotedUsdNum - fairUsdNum) * 0.10 * 100) / 100) : 1;
+
+    var useLocalCurrency = canUseLocal;
+    var currentStep = useLocalCurrency ? localStep : usdStep;
 
     // Helper: build a combined "local · $X USD" string
     function fmtBoth(localStr, usdNum) {
@@ -1270,9 +1301,16 @@
 
       '<div class="card">' +
         '<label>Walk away if price stays above</label>' +
-        '<div style="display:flex;align-items:center;gap:8px;margin-top:0;">' +
-          '<span style="font-size:18px;font-weight:700;color:var(--muted);">$</span>' +
-          '<input type="number" id="max-price" step="0.50" value="' + defaultMax + '" style="flex:1;">' +
+        '<div style="display:flex;align-items:center;gap:10px;margin-top:12px;">' +
+          '<button id="max-price-minus" style="width:52px;height:52px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:26px;font-weight:300;cursor:pointer;touch-action:manipulation;flex-shrink:0;line-height:1;">−</button>' +
+          '<div style="flex:1;display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:12px;overflow:hidden;height:52px;">' +
+            '<input type="number" id="max-price" inputmode="numeric" placeholder="0" style="flex:1;border:none;background:transparent;color:var(--text);font-family:Manrope,sans-serif;font-size:22px;font-weight:800;text-align:center;padding:0 4px;outline:none;min-width:0;">' +
+            '<select id="max-price-currency" style="background:var(--bg2);border:none;border-left:1px solid var(--border);color:var(--text);font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 10px;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none;">' +
+              (currCode ? '<option value="local">' + currCode + '</option>' : '') +
+              '<option value="usd"' + (currCode ? '' : ' selected') + '>USD</option>' +
+            '</select>' +
+          '</div>' +
+          '<button id="max-price-plus" style="width:52px;height:52px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:26px;font-weight:300;cursor:pointer;touch-action:manipulation;flex-shrink:0;line-height:1;">+</button>' +
         '</div>' +
       '</div>' +
 
@@ -1310,6 +1348,37 @@
 
     renderLocationPill(document.getElementById('pill-container-prefs'));
 
+    // ── Walk-away price controls ────────────────────────────────────────
+    var maxPriceInput    = document.getElementById('max-price');
+    var maxPriceCurrency = document.getElementById('max-price-currency');
+
+    // Set initial value
+    maxPriceInput.value = useLocalCurrency ? (defaultLocalVal || '') : (defaultUsdVal || '');
+    if (maxPriceCurrency) maxPriceCurrency.value = useLocalCurrency ? 'local' : 'usd';
+
+    document.getElementById('max-price-minus').onclick = function() {
+      var v = parseFloat(maxPriceInput.value) || 0;
+      maxPriceInput.value = Math.max(0, Math.round((v - currentStep) * 100) / 100);
+    };
+    document.getElementById('max-price-plus').onclick = function() {
+      var v = parseFloat(maxPriceInput.value) || 0;
+      maxPriceInput.value = Math.round((v + currentStep) * 100) / 100;
+    };
+    if (maxPriceCurrency) {
+      maxPriceCurrency.onchange = function() {
+        var v = parseFloat(maxPriceInput.value) || 0;
+        if (this.value === 'local' && !useLocalCurrency) {
+          maxPriceInput.value = Math.round(v * approxExchRate);
+          currentStep = localStep;
+          useLocalCurrency = true;
+        } else if (this.value === 'usd' && useLocalCurrency) {
+          maxPriceInput.value = Math.round(v / approxExchRate * 100) / 100;
+          currentStep = usdStep;
+          useLocalCurrency = false;
+        }
+      };
+    }
+
     // Voice gender — restore saved preference
     var savedGender = localStorage.getItem('bb_voice_gender') || 'male';
     state.voice = savedGender === 'female' ? 'Kore' : 'Puck';
@@ -1345,7 +1414,9 @@
     document.getElementById('voice-card').style.display = state.mode === 'audio' ? 'block' : 'none';
 
     document.getElementById('start-neg-btn').onclick = function() {
-      state.maxPrice = parseFloat(document.getElementById('max-price').value);
+      var rawVal = parseFloat(document.getElementById('max-price').value) || 0;
+      var isLocal = maxPriceCurrency && maxPriceCurrency.value === 'local';
+      state.maxPrice = isLocal ? Math.round(rawVal / approxExchRate * 100) / 100 : rawVal;
       showScreen(state.mode === 'text' ? 'text-negotiation' : 'negotiation');
     };
   }
@@ -1881,16 +1952,29 @@
           ? '<p class="bubble-en" style="font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:18px;padding-top:8px;border-top:1px solid var(--border);">🇬🇧 ' + escHtml(parsed.en) + '</p>'
           : '') +
         // ── Merchant response section ──
-        '<div class="merchant-btns" style="display:flex;flex-direction:column;gap:10px;">' +
-          '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:2px;">🏪 MERCHANT · Tap your response</p>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
-            merchantBtn('merchant-yes','rgba(0,255,136,0.10)','var(--green)','var(--green)', yesPhrase, 'Yes, I can do this', '✅') +
-            merchantBtn('merchant-no', 'rgba(255,59,59,0.08)','var(--red)',  'var(--red)',   noPhrase,  "No, can't go lower",'❌') +
-          '</div>' +
-          '<button class="merchant-suggest" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:14px;color:var(--text);padding:14px 8px;cursor:pointer;touch-action:manipulation;font-family:Manrope,sans-serif;text-align:center;">' +
-            suggestBtnInner +
-          '</button>' +
-        '</div>';
+        (function() {
+          var ctaLocal = {
+            'Mandarin Chinese':'请点击回应', 'Cantonese':'請撳回應',
+            'Thai':'กรุณาเลือก', 'Japanese':'タップして選んでください', 'Korean':'눌러서 선택하세요',
+            'Vietnamese':'Nhấn để chọn', 'Indonesian':'Ketuk untuk memilih', 'Malay':'Ketuk untuk pilih',
+            'Hindi':'जवाब देने के लिए टैप करें', 'Arabic':'انقر للاختيار', 'Turkish':'Yanıtlamak için dokun',
+            'Spanish':'Toca para responder', 'French':'Appuyez pour répondre', 'Portuguese':'Toque para responder',
+            'Russian':'Нажмите для ответа', 'German':'Tippen zum Antworten', 'Italian':'Tocca per rispondere'
+          }[lang] || '';
+          return '<div class="merchant-btns" style="display:flex;flex-direction:column;gap:10px;">' +
+            '<p style="font-size:11px;font-weight:700;color:var(--muted);text-align:center;margin-bottom:2px;">' +
+              (ctaLocal ? '<span style="font-size:13px;color:var(--text);">' + escHtml(ctaLocal) + '</span><br>' : '') +
+              '🏪 Merchant — tap your response' +
+            '</p>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+              merchantBtn('merchant-yes','rgba(0,255,136,0.10)','var(--green)','var(--green)', yesPhrase, 'Yes, I can do this', '✅') +
+              merchantBtn('merchant-no', 'rgba(255,59,59,0.08)','var(--red)',  'var(--red)',   noPhrase,  "No, can\'t go lower",'❌') +
+            '</div>' +
+            '<button class="merchant-suggest" style="width:100%;background:rgba(255,107,53,0.08);border:1.5px solid var(--orange);border-radius:14px;color:var(--orange);padding:14px 8px;cursor:pointer;touch-action:manipulation;font-family:Manrope,sans-serif;text-align:center;">' +
+              suggestBtnInner +
+            '</button>' +
+          '</div>';
+        })()
 
       chat.appendChild(bubble);
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
