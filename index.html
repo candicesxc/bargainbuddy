@@ -827,35 +827,37 @@
     var openingStr = openingOffer ? '$' + openingOffer + ' USD' : 'about 60% of the walk-away limit';
 
     var systemPrompt =
-      'You are negotiating via text message on behalf of a tourist at ' + location + ', speaking ' + lang + ' with a local merchant.\n\n' +
+      '⚠️ NEVER break character. NEVER say "I\'m sorry", "we seem stuck", "as an AI", or any meta-commentary. You are a human negotiator. Just keep negotiating.\n\n' +
 
-      'RESPONSE FORMAT — every reply must follow this structure exactly (no extra text outside these fields):\n' +
-      'LOCAL: [Your message in ' + lang + ' — keep it 1-3 sentences, this is what the merchant reads]\n' +
-      'EN: [English translation of the above, for the tourist]\n' +
-      'YES: [A short natural phrase in ' + lang + ' the merchant taps to mean "I accept this price"]\n' +
-      'NO: [A short natural phrase in ' + lang + ' the merchant taps to mean "No, the price is too low for me"]\n' +
-      'SUGGEST: [A short phrase in ' + lang + ' a merchant taps to mean "I will name my own counter-price" — e.g. in Chinese: "我出个价", in Thai: "ขอเสนอราคา", in Japanese: "値段を言います"]\n\n' +
+      'You are negotiating prices at a market in ' + location + ' on behalf of a tourist. The merchant speaks ' + lang + '. The tourist does not speak ' + lang + '.\n' +
+      'The phone screen is shared — the merchant reads the LOCAL field, the tourist reads the EN field.\n\n' +
+
+      'EVERY reply must use EXACTLY this format (all 5 fields required, no extra text):\n' +
+      'LOCAL: [1-3 sentence message in ' + lang + ' addressed to the merchant]\n' +
+      'EN: [English translation for the tourist]\n' +
+      'YES: [Short ' + lang + ' phrase the merchant taps if they AGREE to lower the price / accept the current offer]\n' +
+      'NO: [Short ' + lang + ' phrase the merchant taps if they REFUSE — price cannot go lower]\n' +
+      'SUGGEST: [Short ' + lang + ' phrase the merchant taps to NAME their own counter-price]\n\n' +
 
       'CONTEXT:\n' +
       '- Item: ' + product + '\n' +
-      '- Merchant asking: ' + (a.quoted_price || 'see conversation') + '\n' +
-      '- Walk-away limit (your maximum, NEVER reveal): ' + maxPriceStr + '\n' +
-      '- Opening offer target: around ' + openingStr + '\n' +
-      '- Negotiation tone: ' + (state.tone || 'friendly') + '\n\n' +
+      '- Merchant originally asked: ' + (a.quoted_price || 'unknown') + '\n' +
+      '- Your walk-away maximum (NEVER reveal this): ' + maxPriceStr + '\n' +
+      '- Start around: ' + openingStr + '\n' +
+      '- Tone: ' + (state.tone || 'friendly') + '\n\n' +
 
-      'NEGOTIATION RULES:\n' +
-      '- Open warmly ("I really like this!") but say the price is too high\n' +
-      '- Start 35-40% below walk-away limit. Never reveal your max\n' +
-      '- Vary your techniques: anchor low, show disappointment, mention seeing it cheaper elsewhere, hint at walking away, concede slowly\n' +
-      '- Keep messages SHORT (1-3 sentences). Natural, human tone\n' +
-      '- Never jump more than 10-15% per turn\n' +
-      '- Never agree above the walk-away limit\n\n' +
+      'RULES:\n' +
+      '- Every turn: genuinely varied negotiation language. No repeated phrases.\n' +
+      '- Concede slowly, max 10-15% per turn. Never go above walk-away limit.\n' +
+      '- Use techniques across turns: anchor low, show disappointment, mention alternatives, hint at leaving.\n' +
+      '- Messages SHORT (1-3 sentences). Sound like a real person, not a script.\n' +
+      '- YES/NO/SUGGEST labels must always be fresh and natural for the current context.\n\n' +
 
-      'SIGNALS — append on its own line after YES/NO when appropriate:\n' +
+      'OPTIONAL SIGNALS — add on own line after SUGGEST only when truly appropriate:\n' +
       'DEAL: [final agreed price] ' + currCode + '\n' +
       'WALKAWAY\n\n' +
 
-      'Start now. Write your opening message using the LOCAL/EN/YES/NO format above.';
+      'Begin now with your opening message.';
 
     var history = [];
 
@@ -1836,9 +1838,10 @@
       showScreen('result');
     }
 
-    // track latest local phrases for modal/button use
+    // track latest local phrases as fallback when AI omits them
     var lastSuggestLocal = '';
     var lastYesLocal = '';
+    var lastNoLocal = '';
 
     // ── render AI message bubble ──────────────────────────────────────────
     function renderAIMessage(parsed) {
@@ -1846,7 +1849,13 @@
       collapseOldBubbles();
 
       if (parsed.suggestLocal) lastSuggestLocal = parsed.suggestLocal;
-      if (parsed.yesLocal) lastYesLocal = parsed.yesLocal;
+      if (parsed.yesLocal)    lastYesLocal    = parsed.yesLocal;
+      if (parsed.noLocal)     lastNoLocal     = parsed.noLocal;
+
+      // Use stored phrases as fallback when AI forgets to include them this turn
+      var yesPhrase     = parsed.yesLocal     || lastYesLocal;
+      var noPhrase      = parsed.noLocal      || lastNoLocal;
+      var suggestPhrase = parsed.suggestLocal || lastSuggestLocal;
 
       var bubble = document.createElement('div');
       bubble.className = 'chat-bubble-active';
@@ -1860,8 +1869,8 @@
         '</button>';
       }
 
-      var suggestBtnInner = lastSuggestLocal
-        ? '<span style="display:block;font-size:18px;font-weight:800;margin-bottom:3px;">' + escHtml(lastSuggestLocal) + '</span><span style="display:block;font-size:10px;color:var(--muted);font-weight:600;">💰 Name my price · Suggest amount</span>'
+      var suggestBtnInner = suggestPhrase
+        ? '<span style="display:block;font-size:18px;font-weight:800;margin-bottom:3px;">' + escHtml(suggestPhrase) + '</span><span style="display:block;font-size:10px;color:var(--muted);font-weight:600;">💰 Name my price · Suggest amount</span>'
         : '<span style="font-size:13px;font-weight:700;">💰 Name my price · Suggest amount</span>';
 
       bubble.innerHTML =
@@ -1875,8 +1884,8 @@
         '<div class="merchant-btns" style="display:flex;flex-direction:column;gap:10px;">' +
           '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:2px;">🏪 MERCHANT · Tap your response</p>' +
           '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
-            merchantBtn('merchant-yes','rgba(0,255,136,0.10)','var(--green)','var(--green)', parsed.yesLocal, 'Yes / Agree', '✅') +
-            merchantBtn('merchant-no', 'rgba(255,59,59,0.08)','var(--red)',  'var(--red)',   parsed.noLocal,  'No / Disagree','❌') +
+            merchantBtn('merchant-yes','rgba(0,255,136,0.10)','var(--green)','var(--green)', yesPhrase, 'Yes, I can do this', '✅') +
+            merchantBtn('merchant-no', 'rgba(255,59,59,0.08)','var(--red)',  'var(--red)',   noPhrase,  "No, can't go lower",'❌') +
           '</div>' +
           '<button class="merchant-suggest" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:14px;color:var(--text);padding:14px 8px;cursor:pointer;touch-action:manipulation;font-family:Manrope,sans-serif;text-align:center;">' +
             suggestBtnInner +
@@ -1899,7 +1908,6 @@
       bubble.querySelector('.merchant-suggest').onclick = function() {
         var modalLocal = document.getElementById('merchant-modal-local');
         if (modalLocal) modalLocal.textContent = lastSuggestLocal || '';
-        // Put the YES phrase on confirm button so merchant sees familiar local text
         var confirmLocal = document.getElementById('merchant-confirm-local');
         if (confirmLocal) confirmLocal.textContent = lastYesLocal ? lastYesLocal + ' ·' : '';
         document.getElementById('merchant-price-modal').style.display = 'flex';
@@ -1909,6 +1917,20 @@
 
     // ── handle AI text ────────────────────────────────────────────────────
     function handleAIText(raw) {
+      // Detect model breaking character — retry with a nudge
+      var lower = (raw || '').toLowerCase();
+      var brokeChar = lower.indexOf('stuck in a loop') !== -1 ||
+                      lower.indexOf('seem to be stuck') !== -1 ||
+                      lower.indexOf('as an ai') !== -1 ||
+                      lower.indexOf("i'm sorry, but") !== -1 ||
+                      lower.indexOf('cannot continue') !== -1;
+      if (brokeChar) {
+        hideThinkingSpinner();
+        showThinkingSpinner();
+        negotiation.send('Keep negotiating. Do NOT break character. Use the LOCAL/EN/YES/NO/SUGGEST format. Continue the negotiation naturally with a fresh offer or approach.');
+        return;
+      }
+
       var parsed = parseAIResponse(raw);
       textTurnCount++;
       renderAIMessage(parsed);
