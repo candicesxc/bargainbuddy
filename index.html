@@ -834,7 +834,7 @@
       'EN: [English translation of the above, for the tourist]\n' +
       'YES: [A short natural phrase in ' + lang + ' the merchant taps to mean "I accept this price"]\n' +
       'NO: [A short natural phrase in ' + lang + ' the merchant taps to mean "No, the price is too low for me"]\n' +
-      'SUGGEST: [A short natural phrase in ' + lang + ' meaning "I want to name my own price"]\n\n' +
+      'SUGGEST: [A short phrase in ' + lang + ' a merchant taps to mean "I will name my own counter-price" — e.g. in Chinese: "我出个价", in Thai: "ขอเสนอราคา", in Japanese: "値段を言います"]\n\n' +
 
       'CONTEXT:\n' +
       '- Item: ' + product + '\n' +
@@ -1293,13 +1293,14 @@
 
       '<div class="card" id="voice-card">' +
         '<label>AI Voice</label>' +
-        '<select id="voice-select">' +
-          '<option value="Puck">Puck (Default)</option>' +
-          '<option value="Charon">Charon</option>' +
-          '<option value="Kore">Kore</option>' +
-          '<option value="Fenrir">Fenrir</option>' +
-          '<option value="Aoede">Aoede</option>' +
-        '</select>' +
+        '<div class="tone-group" style="margin-top:10px;">' +
+          '<button class="voice-gender-btn" data-voice="Puck" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;">' +
+            '<span style="font-size:22px;">👨</span><span style="font-size:13px;font-weight:700;">Male</span>' +
+          '</button>' +
+          '<button class="voice-gender-btn" data-voice="Kore" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;">' +
+            '<span style="font-size:22px;">👩</span><span style="font-size:13px;font-weight:700;">Female</span>' +
+          '</button>' +
+        '</div>' +
       '</div>' +
 
       '<p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:4px;">Negotiating in <span style="color:var(--green);font-weight:700;">' + state.detectedLanguage + '</span></p>' +
@@ -1307,7 +1308,21 @@
 
     renderLocationPill(document.getElementById('pill-container-prefs'));
 
-    document.getElementById('voice-select').value = state.voice;
+    // Voice gender — restore saved preference
+    var savedGender = localStorage.getItem('bb_voice_gender') || 'male';
+    state.voice = savedGender === 'female' ? 'Kore' : 'Puck';
+    document.querySelectorAll('.voice-gender-btn').forEach(function(btn) {
+      var isMatch = (btn.dataset.voice === 'Kore' && savedGender === 'female') ||
+                    (btn.dataset.voice === 'Puck' && savedGender === 'male');
+      if (isMatch) btn.classList.add('active');
+      btn.onclick = function() {
+        document.querySelectorAll('.voice-gender-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var gender = btn.dataset.voice === 'Kore' ? 'female' : 'male';
+        localStorage.setItem('bb_voice_gender', gender);
+        state.voice = btn.dataset.voice;
+      };
+    });
 
     document.querySelectorAll('.tone-btn').forEach(function(btn) {
       btn.onclick = function() {
@@ -1329,7 +1344,6 @@
 
     document.getElementById('start-neg-btn').onclick = function() {
       state.maxPrice = parseFloat(document.getElementById('max-price').value);
-      state.voice = document.getElementById('voice-select').value;
       showScreen(state.mode === 'text' ? 'text-negotiation' : 'negotiation');
     };
   }
@@ -1636,11 +1650,11 @@
     container.innerHTML =
       '<div id="pill-container-text-neg"></div>' +
 
-      // Header — merchant asking price ONLY (no fair price visible to merchant)
+      // Header — live price status (updates as negotiation progresses)
       '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;">' +
         '<div>' +
-          '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Merchant asking</p>' +
-          '<p style="font-family:Manrope,sans-serif;font-weight:700;font-size:17px;color:#888;text-decoration:line-through;text-decoration-color:var(--red);">' + escHtml(a.quoted_price || '—') + '</p>' +
+          '<p id="neg-price-label" style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Merchant asking</p>' +
+          '<p id="neg-price-value" style="font-family:Manrope,sans-serif;font-weight:700;font-size:17px;color:#888;">' + escHtml(a.quoted_price || '—') + '</p>' +
         '</div>' +
         '<div style="text-align:right;">' +
           '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:3px;">Language</p>' +
@@ -1649,20 +1663,14 @@
       '</div>' +
 
       // Chat area
-      '<div id="text-chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
+      '<div id="text-chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:80px;">' +
         '<div id="text-thinking" style="text-align:center;padding:28px 16px;color:var(--muted);font-size:13px;">✦ Opening negotiation…</div>' +
       '</div>' +
 
-      // Traveller price bar (sticky bottom)
-      '<div style="position:sticky;bottom:0;background:var(--bg);padding:10px 0 max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);margin-top:4px;">' +
-        '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">✈️ YOU (TRAVELLER) — suggest a new price</p>' +
-        '<div style="display:flex;gap:8px;align-items:center;">' +
-          '<div style="flex:1;position:relative;">' +
-            '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;font-weight:700;">$</span>' +
-            '<input type="number" id="traveller-price-input" placeholder="Your offer in USD" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:14px 12px 14px 28px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:16px;font-family:Manrope,sans-serif;font-weight:700;outline:none;">' +
-          '</div>' +
-          '<button id="traveller-price-send" style="background:var(--green);color:#000;border:none;border-radius:12px;padding:14px 20px;font-size:15px;font-weight:800;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap;touch-action:manipulation;flex-shrink:0;">Send →</button>' +
-        '</div>' +
+      // Sticky bottom — traveller suggest button
+      '<div style="position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--bg);padding:10px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);">' +
+        '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;text-align:center;">✈️ YOUR TURN — Suggest a price</p>' +
+        '<button id="traveller-suggest-btn" style="width:100%;background:rgba(0,255,136,0.1);border:1.5px solid var(--green);border-radius:14px;color:var(--green);font-size:15px;font-weight:800;font-family:Manrope,sans-serif;padding:15px;cursor:pointer;touch-action:manipulation;">💬 Name my price →</button>' +
       '</div>' +
 
       // Merchant price modal
@@ -1670,12 +1678,40 @@
         '<div id="merchant-price-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.75);"></div>' +
         '<div style="position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:24px 20px;padding-bottom:max(28px,env(safe-area-inset-bottom));width:100%;max-width:520px;z-index:1;">' +
           '<div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;"></div>' +
-          '<p id="merchant-modal-local" style="font-size:22px;font-weight:800;color:var(--text);text-align:center;margin-bottom:4px;"></p>' +
-          '<p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:4px;">💰 Name your price</p>' +
+          '<p id="merchant-modal-local" style="font-size:22px;font-weight:800;color:var(--text);text-align:center;margin-bottom:2px;"></p>' +
+          '<p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:4px;">🏪 Name your price · 输入您的出价</p>' +
           '<p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">Enter amount in <strong style="color:var(--text);">' + escHtml(currCode || 'local currency') + '</strong></p>' +
           '<input type="number" id="merchant-price-input" inputmode="numeric" placeholder="e.g. 150" style="width:100%;box-sizing:border-box;font-family:Manrope,sans-serif;font-size:36px;font-weight:800;text-align:center;background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px 8px;color:var(--text);outline:none;margin-bottom:16px;">' +
-          '<button id="merchant-price-confirm" class="btn-primary" style="margin-top:0;width:100%;touch-action:manipulation;">✅ Confirm · Send my price</button>' +
+          '<button id="merchant-price-confirm" class="btn-primary" style="margin-top:0;width:100%;touch-action:manipulation;"><span id="merchant-confirm-local"></span> ✅ Confirm · This is my price</button>' +
           '<button id="merchant-price-cancel" class="btn-secondary" style="margin-top:8px;width:100%;font-size:13px;touch-action:manipulation;">Cancel · 取消</button>' +
+        '</div>' +
+      '</div>' +
+
+      // Traveller price modal
+      '<div id="traveller-price-modal" style="display:none;position:fixed;inset:0;z-index:1000;align-items:flex-end;justify-content:center;">' +
+        '<div id="traveller-price-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.75);"></div>' +
+        '<div style="position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:24px 20px;padding-bottom:max(28px,env(safe-area-inset-bottom));width:100%;max-width:520px;z-index:1;">' +
+          '<div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;"></div>' +
+          '<p style="font-size:18px;font-weight:800;color:var(--text);text-align:center;margin-bottom:2px;">✈️ Your offer</p>' +
+          '<p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">Enter amount in <strong style="color:var(--text);">' + escHtml(currCode || 'USD') + '</strong> · AI will tell the merchant</p>' +
+          '<input type="number" id="traveller-price-input" inputmode="numeric" placeholder="e.g. 80" style="width:100%;box-sizing:border-box;font-family:Manrope,sans-serif;font-size:36px;font-weight:800;text-align:center;background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px 8px;color:var(--text);outline:none;margin-bottom:16px;">' +
+          '<button id="traveller-price-send" class="btn-primary" style="margin-top:0;width:100%;touch-action:manipulation;">💬 Send my offer → AI translates</button>' +
+          '<button id="traveller-price-cancel" class="btn-secondary" style="margin-top:8px;width:100%;font-size:13px;touch-action:manipulation;">Cancel</button>' +
+        '</div>' +
+      '</div>' +
+
+      // Deal / walk-away action popup (slides up after enough turns)
+      '<div id="text-action-popup" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:990;">' +
+        '<div style="height:40px;background:linear-gradient(transparent,var(--bg));pointer-events:none;"></div>' +
+        '<div style="background:var(--bg);padding:0 16px;padding-bottom:max(16px,env(safe-area-inset-bottom));">' +
+          '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:18px 16px 14px;box-shadow:0 -8px 32px rgba(0,0,0,0.5);">' +
+            '<p id="text-popup-label" style="font-size:12px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">Ready to decide?</p>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">' +
+              '<button id="text-deal-btn" class="btn-primary" style="margin-top:0;padding:14px 8px;font-size:14px;">🤝 Accept Deal</button>' +
+              '<button id="text-walkaway-btn" class="btn-secondary" style="margin-top:0;padding:14px 8px;font-size:14px;">🚶 Walk Away</button>' +
+            '</div>' +
+            '<button id="text-popup-dismiss" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;color:var(--muted2);font-size:13px;font-weight:600;font-family:Manrope,sans-serif;padding:11px;cursor:pointer;touch-action:manipulation;">Keep negotiating →</button>' +
+          '</div>' +
         '</div>' +
       '</div>';
 
@@ -1684,6 +1720,36 @@
     var chat = document.getElementById('text-chat');
     var sessionDone = false;
     var negotiation;
+    var textTurnCount = 0;
+    var textPopupDismissedAt = -99;
+
+    // ── live price status in header ───────────────────────────────────────
+    function updatePriceStatus(label, value, color) {
+      var lbl = document.getElementById('neg-price-label');
+      var val = document.getElementById('neg-price-value');
+      if (lbl) lbl.textContent = label;
+      if (val) { val.textContent = value; val.style.color = color || '#888'; }
+    }
+
+    // ── deal / walkaway popup ─────────────────────────────────────────────
+    var textActionPopup = document.getElementById('text-action-popup');
+    function showTextActionPopup(label) {
+      document.getElementById('text-popup-label').textContent = label || 'Ready to decide?';
+      textActionPopup.style.display = 'block';
+    }
+    function hideTextActionPopup() { textActionPopup.style.display = 'none'; }
+    document.getElementById('text-popup-dismiss').onclick = function() {
+      textPopupDismissedAt = textTurnCount;
+      hideTextActionPopup();
+    };
+    document.getElementById('text-deal-btn').onclick = function() {
+      hideTextActionPopup();
+      doFinish('deal', null);
+    };
+    document.getElementById('text-walkaway-btn').onclick = function() {
+      hideTextActionPopup();
+      doFinish('walkaway', null);
+    };
 
     // ── parse AI response ─────────────────────────────────────────────────
     // Expected format (line-prefixed):
@@ -1770,8 +1836,9 @@
       showScreen('result');
     }
 
-    // track the latest SUGGEST phrase so the modal can show it
+    // track latest local phrases for modal/button use
     var lastSuggestLocal = '';
+    var lastYesLocal = '';
 
     // ── render AI message bubble ──────────────────────────────────────────
     function renderAIMessage(parsed) {
@@ -1779,6 +1846,7 @@
       collapseOldBubbles();
 
       if (parsed.suggestLocal) lastSuggestLocal = parsed.suggestLocal;
+      if (parsed.yesLocal) lastYesLocal = parsed.yesLocal;
 
       var bubble = document.createElement('div');
       bubble.className = 'chat-bubble-active';
@@ -1829,9 +1897,11 @@
         negotiation.send('Merchant refuses — the price is too low for them.');
       };
       bubble.querySelector('.merchant-suggest').onclick = function() {
-        // Update modal local-language title
         var modalLocal = document.getElementById('merchant-modal-local');
         if (modalLocal) modalLocal.textContent = lastSuggestLocal || '';
+        // Put the YES phrase on confirm button so merchant sees familiar local text
+        var confirmLocal = document.getElementById('merchant-confirm-local');
+        if (confirmLocal) confirmLocal.textContent = lastYesLocal ? lastYesLocal + ' ·' : '';
         document.getElementById('merchant-price-modal').style.display = 'flex';
         setTimeout(function() { document.getElementById('merchant-price-input').focus(); }, 80);
       };
@@ -1840,26 +1910,50 @@
     // ── handle AI text ────────────────────────────────────────────────────
     function handleAIText(raw) {
       var parsed = parseAIResponse(raw);
+      textTurnCount++;
       renderAIMessage(parsed);
+
       if (parsed.deal) {
         var num = parseFloat(parsed.deal);
         var usd = (!isNaN(num) && state._exchRate) ? Math.round(num / state._exchRate * 100) / 100 : (isNaN(num) ? null : num);
-        setTimeout(function() { doFinish('deal', usd); }, 2000);
+        updatePriceStatus('Deal agreed! 🤝', parsed.deal, 'var(--green)');
+        hideTextActionPopup();
+        setTimeout(function() { doFinish('deal', usd); }, 1800);
         return;
       }
       if (parsed.walkaway) {
-        setTimeout(function() { doFinish('walkaway', null); }, 2000);
+        hideTextActionPopup();
+        setTimeout(function() { doFinish('walkaway', null); }, 1800);
+        return;
+      }
+
+      // Show deal/walkaway popup after turn 3, with cooldown
+      var enoughTurns = textTurnCount >= 3;
+      var cooldownOver = textTurnCount >= textPopupDismissedAt + 3;
+      if (enoughTurns && cooldownOver) {
+        var label = textTurnCount >= 6 ? 'Heard a deal? Or time to walk away?' : 'Getting close? Ready to decide?';
+        setTimeout(function() { showTextActionPopup(label); }, 600);
       }
     }
 
-    // ── traveller price ───────────────────────────────────────────────────
+    // ── traveller suggest button → open modal ────────────────────────────
+    function closeTravellerModal() { document.getElementById('traveller-price-modal').style.display = 'none'; }
+    document.getElementById('traveller-suggest-btn').onclick = function() {
+      document.getElementById('traveller-price-modal').style.display = 'flex';
+      setTimeout(function() { document.getElementById('traveller-price-input').focus(); }, 80);
+    };
+    document.getElementById('traveller-price-backdrop').onclick = closeTravellerModal;
+    document.getElementById('traveller-price-cancel').onclick   = closeTravellerModal;
     document.getElementById('traveller-price-send').onclick = function() {
       var val = document.getElementById('traveller-price-input').value.trim();
       if (!val || !negotiation) return;
-      disableAllMerchantBtns();
-      showThinkingSpinner();
+      closeTravellerModal();
       document.getElementById('traveller-price-input').value = '';
-      negotiation.send('The tourist wants to counter at $' + val + ' USD. Say this firmly in ' + lang + ' — tell the merchant this is your best offer.');
+      disableAllMerchantBtns();
+      hideTextActionPopup();
+      showThinkingSpinner();
+      updatePriceStatus('Your offer', val + ' ' + (currCode || 'USD'), 'var(--text)');
+      negotiation.send('The tourist offers ' + val + ' ' + (currCode || 'USD') + '. Tell the merchant this in ' + lang + ' — say this is the tourist\'s offer.');
     };
 
     // ── merchant price modal ──────────────────────────────────────────────
@@ -1872,8 +1966,10 @@
       closeMerchantModal();
       document.getElementById('merchant-price-input').value = '';
       disableAllMerchantBtns();
+      hideTextActionPopup();
       showThinkingSpinner();
-      negotiation.send('Merchant counter-offers at ' + val + ' ' + (currCode || 'local currency') + '. Respond to this new price.');
+      updatePriceStatus("Merchant's offer", val + ' ' + (currCode || 'local currency'), 'var(--orange)');
+      negotiation.send('Merchant counter-offers at ' + val + ' ' + (currCode || 'local currency') + '. Respond to this new price in ' + lang + '.');
     };
 
     // ── start ─────────────────────────────────────────────────────────────
