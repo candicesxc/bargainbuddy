@@ -832,8 +832,9 @@
       'RESPONSE FORMAT — every reply must follow this structure exactly (no extra text outside these fields):\n' +
       'LOCAL: [Your message in ' + lang + ' — keep it 1-3 sentences, this is what the merchant reads]\n' +
       'EN: [English translation of the above, for the tourist]\n' +
-      'YES: [A short natural phrase in ' + lang + ' meaning "Yes, I agree / I accept this price"]\n' +
-      'NO: [A short natural phrase in ' + lang + ' meaning "No, too expensive"]\n\n' +
+      'YES: [A short natural phrase in ' + lang + ' the merchant taps to mean "I accept this price"]\n' +
+      'NO: [A short natural phrase in ' + lang + ' the merchant taps to mean "No, the price is too low for me"]\n' +
+      'SUGGEST: [A short natural phrase in ' + lang + ' meaning "I want to name my own price"]\n\n' +
 
       'CONTEXT:\n' +
       '- Item: ' + product + '\n' +
@@ -1654,13 +1655,13 @@
 
       // Traveller price bar (sticky bottom)
       '<div style="position:sticky;bottom:0;background:var(--bg);padding:10px 0 max(14px,env(safe-area-inset-bottom));border-top:1px solid var(--border);margin-top:4px;">' +
-        '<p style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">💡 You — suggest a new price</p>' +
+        '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">✈️ YOU (TRAVELLER) — suggest a new price</p>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
           '<div style="flex:1;position:relative;">' +
             '<span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;font-weight:700;">$</span>' +
-            '<input type="number" id="traveller-price-input" placeholder="Your offer in USD" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:13px 12px 13px 28px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:15px;font-family:Manrope,sans-serif;font-weight:700;outline:none;">' +
+            '<input type="number" id="traveller-price-input" placeholder="Your offer in USD" inputmode="decimal" style="width:100%;box-sizing:border-box;padding:14px 12px 14px 28px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:16px;font-family:Manrope,sans-serif;font-weight:700;outline:none;">' +
           '</div>' +
-          '<button id="traveller-price-send" style="background:var(--green);color:#000;border:none;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:800;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap;touch-action:manipulation;flex-shrink:0;">Send →</button>' +
+          '<button id="traveller-price-send" style="background:var(--green);color:#000;border:none;border-radius:12px;padding:14px 20px;font-size:15px;font-weight:800;font-family:Manrope,sans-serif;cursor:pointer;white-space:nowrap;touch-action:manipulation;flex-shrink:0;">Send →</button>' +
         '</div>' +
       '</div>' +
 
@@ -1669,11 +1670,12 @@
         '<div id="merchant-price-backdrop" style="position:absolute;inset:0;background:rgba(0,0,0,0.75);"></div>' +
         '<div style="position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:24px 24px 0 0;padding:24px 20px;padding-bottom:max(28px,env(safe-area-inset-bottom));width:100%;max-width:520px;z-index:1;">' +
           '<div style="width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 18px;"></div>' +
-          '<p style="font-size:15px;font-weight:700;color:var(--text);text-align:center;margin-bottom:4px;">💰 Merchant\'s counter offer</p>' +
-          '<p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px;">Enter amount in <strong style="color:var(--text);">' + escHtml(currCode || 'local currency') + '</strong></p>' +
-          '<input type="number" id="merchant-price-input" inputmode="numeric" placeholder="e.g. 150" style="width:100%;box-sizing:border-box;font-family:Manrope,sans-serif;font-size:32px;font-weight:800;text-align:center;background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:14px 8px;color:var(--text);outline:none;margin-bottom:16px;">' +
-          '<button id="merchant-price-confirm" class="btn-primary" style="margin-top:0;width:100%;touch-action:manipulation;">✅ Confirm this offer</button>' +
-          '<button id="merchant-price-cancel" class="btn-secondary" style="margin-top:8px;width:100%;font-size:13px;touch-action:manipulation;">Cancel</button>' +
+          '<p id="merchant-modal-local" style="font-size:22px;font-weight:800;color:var(--text);text-align:center;margin-bottom:4px;"></p>' +
+          '<p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:4px;">💰 Name your price</p>' +
+          '<p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">Enter amount in <strong style="color:var(--text);">' + escHtml(currCode || 'local currency') + '</strong></p>' +
+          '<input type="number" id="merchant-price-input" inputmode="numeric" placeholder="e.g. 150" style="width:100%;box-sizing:border-box;font-family:Manrope,sans-serif;font-size:36px;font-weight:800;text-align:center;background:var(--bg3);border:2px solid var(--border);border-radius:14px;padding:16px 8px;color:var(--text);outline:none;margin-bottom:16px;">' +
+          '<button id="merchant-price-confirm" class="btn-primary" style="margin-top:0;width:100%;touch-action:manipulation;">✅ Confirm · Send my price</button>' +
+          '<button id="merchant-price-cancel" class="btn-secondary" style="margin-top:8px;width:100%;font-size:13px;touch-action:manipulation;">Cancel · 取消</button>' +
         '</div>' +
       '</div>';
 
@@ -1700,15 +1702,17 @@
 
       if (/^WALKAWAY\s*$/mi.test(text)) { walkaway = true; }
 
-      var localMatch = text.match(/^LOCAL:\s*(.+?)(?=\n(?:EN|YES|NO|DEAL|WALKAWAY):|\s*$)/msi);
-      var enMatch    = text.match(/^EN:\s*(.+?)(?=\n(?:LOCAL|YES|NO|DEAL|WALKAWAY):|\s*$)/msi);
-      var yesMatch   = text.match(/^YES:\s*(.+)$/mi);
-      var noMatch    = text.match(/^NO:\s*(.+)$/mi);
+      var localMatch   = text.match(/^LOCAL:\s*(.+?)(?=\n(?:EN|YES|NO|SUGGEST|DEAL|WALKAWAY):|\s*$)/msi);
+      var enMatch      = text.match(/^EN:\s*(.+?)(?=\n(?:LOCAL|YES|NO|SUGGEST|DEAL|WALKAWAY):|\s*$)/msi);
+      var yesMatch     = text.match(/^YES:\s*(.+)$/mi);
+      var noMatch      = text.match(/^NO:\s*(.+)$/mi);
+      var suggestMatch = text.match(/^SUGGEST:\s*(.+)$/mi);
 
-      var local    = localMatch ? localMatch[1].trim() : '';
-      var en       = enMatch    ? enMatch[1].trim()    : '';
-      var yesLocal = yesMatch   ? yesMatch[1].trim()   : '';
-      var noLocal  = noMatch    ? noMatch[1].trim()    : '';
+      var local       = localMatch   ? localMatch[1].trim()   : '';
+      var en          = enMatch      ? enMatch[1].trim()      : '';
+      var yesLocal    = yesMatch     ? yesMatch[1].trim()     : '';
+      var noLocal     = noMatch      ? noMatch[1].trim()      : '';
+      var suggestLocal= suggestMatch ? suggestMatch[1].trim() : '';
 
       // Fallback: if LOCAL: prefix is missing, use first non-empty line as local text
       if (!local) {
@@ -1716,7 +1720,7 @@
         local = lines[0] || text.trim();
       }
 
-      return { local: local, en: en, yesLocal: yesLocal, noLocal: noLocal, deal: deal, walkaway: walkaway };
+      return { local: local, en: en, yesLocal: yesLocal, noLocal: noLocal, suggestLocal: suggestLocal, deal: deal, walkaway: walkaway };
     }
 
     function disableAllMerchantBtns() {
@@ -1766,30 +1770,49 @@
       showScreen('result');
     }
 
+    // track the latest SUGGEST phrase so the modal can show it
+    var lastSuggestLocal = '';
+
     // ── render AI message bubble ──────────────────────────────────────────
     function renderAIMessage(parsed) {
       hideThinkingSpinner();
       collapseOldBubbles();
 
-      var yesLabel = (parsed.yesLocal ? parsed.yesLocal + ' · ' : '') + 'Yes / Agree';
-      var noLabel  = (parsed.noLocal  ? parsed.noLocal  + ' · ' : '') + 'No / Disagree';
+      if (parsed.suggestLocal) lastSuggestLocal = parsed.suggestLocal;
 
       var bubble = document.createElement('div');
       bubble.className = 'chat-bubble-active';
-      bubble.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:18px 16px 14px;transition:all 0.25s ease;';
+      bubble.style.cssText = 'background:var(--bg2);border:1px solid var(--border);border-radius:18px;padding:20px 16px 16px;transition:all 0.3s ease;margin-bottom:4px;';
+
+      // Build YES / NO button HTML — local phrase large on top, English subtitle small below
+      function merchantBtn(cls, bg, borderColor, textColor, localPhrase, enLabel, icon) {
+        return '<button class="' + cls + '" style="background:' + bg + ';border:1.5px solid ' + borderColor + ';border-radius:14px;color:' + textColor + ';padding:16px 8px;cursor:pointer;touch-action:manipulation;text-align:center;font-family:Manrope,sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;width:100%;">' +
+          (localPhrase ? '<span style="font-size:20px;font-weight:800;line-height:1.2;word-break:break-word;">' + escHtml(localPhrase) + '</span>' : '') +
+          '<span style="font-size:10px;font-weight:600;opacity:0.75;letter-spacing:0.02em;">' + icon + ' ' + enLabel + '</span>' +
+        '</button>';
+      }
+
+      var suggestBtnInner = lastSuggestLocal
+        ? '<span style="display:block;font-size:18px;font-weight:800;margin-bottom:3px;">' + escHtml(lastSuggestLocal) + '</span><span style="display:block;font-size:10px;color:var(--muted);font-weight:600;">💰 Name my price · Suggest amount</span>'
+        : '<span style="font-size:13px;font-weight:700;">💰 Name my price · Suggest amount</span>';
+
       bubble.innerHTML =
-        // Local language — large (merchant reads this)
-        '<p class="bubble-local" style="font-size:20px;font-weight:700;color:var(--text);line-height:1.55;margin-bottom:10px;">' + escHtml(parsed.local) + '</p>' +
-        // English translation — smaller, for traveller
-        (parsed.en ? '<p class="bubble-en" style="font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:14px;padding-top:8px;border-top:1px solid var(--border);">🇬🇧 ' + escHtml(parsed.en) + '</p>' : '') +
-        // Merchant response
-        '<div class="merchant-btns" style="display:flex;flex-direction:column;gap:8px;">' +
-          '<p style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px;">🏪 Merchant — tap your response</p>' +
-          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-            '<button class="merchant-yes" style="background:rgba(0,255,136,0.12);border:1px solid var(--green);border-radius:12px;color:var(--green);font-size:12px;font-weight:700;font-family:Manrope,sans-serif;padding:14px 6px;cursor:pointer;touch-action:manipulation;line-height:1.3;word-break:break-word;">✅ ' + escHtml(yesLabel) + '</button>' +
-            '<button class="merchant-no" style="background:rgba(255,59,59,0.08);border:1px solid var(--red);border-radius:12px;color:var(--red);font-size:12px;font-weight:700;font-family:Manrope,sans-serif;padding:14px 6px;cursor:pointer;touch-action:manipulation;line-height:1.3;word-break:break-word;">❌ ' + escHtml(noLabel) + '</button>' +
+        // ── LOCAL language — big, merchant reads this ──
+        '<p class="bubble-local" style="font-size:22px;font-weight:800;color:var(--text);line-height:1.5;margin-bottom:10px;">' + escHtml(parsed.local) + '</p>' +
+        // ── English translation — smaller, directly below ──
+        (parsed.en
+          ? '<p class="bubble-en" style="font-size:13px;color:var(--muted);line-height:1.45;margin-bottom:18px;padding-top:8px;border-top:1px solid var(--border);">🇬🇧 ' + escHtml(parsed.en) + '</p>'
+          : '') +
+        // ── Merchant response section ──
+        '<div class="merchant-btns" style="display:flex;flex-direction:column;gap:10px;">' +
+          '<p style="font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:2px;">🏪 MERCHANT · Tap your response</p>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+            merchantBtn('merchant-yes','rgba(0,255,136,0.10)','var(--green)','var(--green)', parsed.yesLocal, 'Yes / Agree', '✅') +
+            merchantBtn('merchant-no', 'rgba(255,59,59,0.08)','var(--red)',  'var(--red)',   parsed.noLocal,  'No / Disagree','❌') +
           '</div>' +
-          '<button class="merchant-suggest" style="background:var(--bg3);border:1px solid var(--border);border-radius:12px;color:var(--muted2);font-size:12px;font-weight:600;font-family:Manrope,sans-serif;padding:12px;cursor:pointer;touch-action:manipulation;">💰 Suggest a different price</button>' +
+          '<button class="merchant-suggest" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:14px;color:var(--text);padding:14px 8px;cursor:pointer;touch-action:manipulation;font-family:Manrope,sans-serif;text-align:center;">' +
+            suggestBtnInner +
+          '</button>' +
         '</div>';
 
       chat.appendChild(bubble);
@@ -1803,9 +1826,12 @@
       bubble.querySelector('.merchant-no').onclick = function() {
         disableAllMerchantBtns();
         showThinkingSpinner();
-        negotiation.send('Merchant refuses — says the price is too low.');
+        negotiation.send('Merchant refuses — the price is too low for them.');
       };
       bubble.querySelector('.merchant-suggest').onclick = function() {
+        // Update modal local-language title
+        var modalLocal = document.getElementById('merchant-modal-local');
+        if (modalLocal) modalLocal.textContent = lastSuggestLocal || '';
         document.getElementById('merchant-price-modal').style.display = 'flex';
         setTimeout(function() { document.getElementById('merchant-price-input').focus(); }, 80);
       };
