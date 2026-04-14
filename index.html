@@ -1303,10 +1303,10 @@
         '<label>Walk away if price stays above</label>' +
         '<div style="display:flex;align-items:center;gap:10px;margin-top:12px;">' +
           '<button id="max-price-minus" style="width:52px;height:52px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:28px;font-weight:300;cursor:pointer;touch-action:manipulation;flex-shrink:0;display:flex;align-items:center;justify-content:center;">−</button>' +
-          '<div style="flex:1;background:var(--bg3);border:1.5px solid var(--green);border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:8px;">' +
-            '<input type="number" id="max-price" inputmode="numeric" placeholder="0" style="flex:1;border:none;background:transparent;color:var(--text);font-family:Manrope,sans-serif;font-size:26px;font-weight:800;text-align:right;outline:none;min-width:0;width:0;">' +
-            '<button id="max-price-curr-toggle" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--green);font-family:Manrope,sans-serif;font-size:14px;font-weight:800;padding:6px 10px;cursor:pointer;touch-action:manipulation;white-space:nowrap;">' +
-              (useLocalCurrency ? (currCode || 'USD') : 'USD') + ' ▾' +
+          '<div style="flex:1;background:var(--bg3);border:1.5px solid var(--green);border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:6px;min-width:0;">' +
+            '<input type="number" id="max-price" inputmode="numeric" placeholder="0" style="flex:1;min-width:0;border:none;background:transparent;color:var(--text);font-family:Manrope,sans-serif;font-size:26px;font-weight:800;text-align:center;outline:none;">' +
+            '<button id="max-price-curr-toggle" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--green);border-radius:8px;color:var(--green);font-family:Manrope,sans-serif;font-size:13px;font-weight:800;padding:6px 8px;cursor:pointer;touch-action:manipulation;white-space:nowrap;line-height:1;">' +
+              (useLocalCurrency ? (currCode || 'USD') : 'USD') + '<br><span style="font-size:9px;opacity:0.7;">tap</span>' +
             '</button>' +
           '</div>' +
           '<button id="max-price-plus" style="width:52px;height:52px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:28px;font-weight:300;cursor:pointer;touch-action:manipulation;flex-shrink:0;display:flex;align-items:center;justify-content:center;">+</button>' +
@@ -1741,7 +1741,7 @@
       '</div>' +
 
       // Chat area
-      '<div id="text-chat" style="display:flex;flex-direction:column;gap:10px;margin-bottom:80px;">' +
+      '<div id="text-chat" style="display:flex;flex-direction:column;gap:10px;padding-bottom:160px;">' +
         '<div id="text-thinking" style="text-align:center;padding:28px 16px;color:var(--muted);font-size:13px;">✦ Opening negotiation…</div>' +
       '</div>' +
 
