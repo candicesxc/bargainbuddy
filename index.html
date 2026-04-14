@@ -1302,15 +1302,14 @@
       '<div class="card">' +
         '<label>Walk away if price stays above</label>' +
         '<div style="display:flex;align-items:center;gap:10px;margin-top:12px;">' +
-          '<button id="max-price-minus" style="width:52px;height:52px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:26px;font-weight:300;cursor:pointer;touch-action:manipulation;flex-shrink:0;line-height:1;">−</button>' +
-          '<div style="flex:1;display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:12px;overflow:hidden;height:52px;">' +
-            '<input type="number" id="max-price" inputmode="numeric" placeholder="0" style="flex:1;border:none;background:transparent;color:var(--text);font-family:Manrope,sans-serif;font-size:22px;font-weight:800;text-align:center;padding:0 4px;outline:none;min-width:0;">' +
-            '<select id="max-price-currency" style="background:var(--bg2);border:none;border-left:1px solid var(--border);color:var(--text);font-family:Manrope,sans-serif;font-size:13px;font-weight:700;padding:0 10px;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none;">' +
-              (currCode ? '<option value="local">' + currCode + '</option>' : '') +
-              '<option value="usd"' + (currCode ? '' : ' selected') + '>USD</option>' +
-            '</select>' +
+          '<button id="max-price-minus" style="width:52px;height:52px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:28px;font-weight:300;cursor:pointer;touch-action:manipulation;flex-shrink:0;display:flex;align-items:center;justify-content:center;">−</button>' +
+          '<div style="flex:1;background:var(--bg3);border:1.5px solid var(--green);border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:8px;">' +
+            '<input type="number" id="max-price" inputmode="numeric" placeholder="0" style="flex:1;border:none;background:transparent;color:var(--text);font-family:Manrope,sans-serif;font-size:26px;font-weight:800;text-align:right;outline:none;min-width:0;width:0;">' +
+            '<button id="max-price-curr-toggle" style="flex-shrink:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;color:var(--green);font-family:Manrope,sans-serif;font-size:14px;font-weight:800;padding:6px 10px;cursor:pointer;touch-action:manipulation;white-space:nowrap;">' +
+              (useLocalCurrency ? (currCode || 'USD') : 'USD') + ' ▾' +
+            '</button>' +
           '</div>' +
-          '<button id="max-price-plus" style="width:52px;height:52px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:26px;font-weight:300;cursor:pointer;touch-action:manipulation;flex-shrink:0;line-height:1;">+</button>' +
+          '<button id="max-price-plus" style="width:52px;height:52px;border-radius:14px;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-size:28px;font-weight:300;cursor:pointer;touch-action:manipulation;flex-shrink:0;display:flex;align-items:center;justify-content:center;">+</button>' +
         '</div>' +
       '</div>' +
 
@@ -1349,12 +1348,14 @@
     renderLocationPill(document.getElementById('pill-container-prefs'));
 
     // ── Walk-away price controls ────────────────────────────────────────
-    var maxPriceInput    = document.getElementById('max-price');
-    var maxPriceCurrency = document.getElementById('max-price-currency');
+    var maxPriceInput   = document.getElementById('max-price');
+    var maxCurrToggle   = document.getElementById('max-price-curr-toggle');
 
-    // Set initial value
     maxPriceInput.value = useLocalCurrency ? (defaultLocalVal || '') : (defaultUsdVal || '');
-    if (maxPriceCurrency) maxPriceCurrency.value = useLocalCurrency ? 'local' : 'usd';
+
+    function updateCurrToggleLabel() {
+      if (maxCurrToggle) maxCurrToggle.textContent = (useLocalCurrency && currCode ? currCode : 'USD') + ' ▾';
+    }
 
     document.getElementById('max-price-minus').onclick = function() {
       var v = parseFloat(maxPriceInput.value) || 0;
@@ -1364,20 +1365,25 @@
       var v = parseFloat(maxPriceInput.value) || 0;
       maxPriceInput.value = Math.round((v + currentStep) * 100) / 100;
     };
-    if (maxPriceCurrency) {
-      maxPriceCurrency.onchange = function() {
+    if (maxCurrToggle) {
+      maxCurrToggle.onclick = function() {
         var v = parseFloat(maxPriceInput.value) || 0;
-        if (this.value === 'local' && !useLocalCurrency) {
-          maxPriceInput.value = Math.round(v * approxExchRate);
-          currentStep = localStep;
-          useLocalCurrency = true;
-        } else if (this.value === 'usd' && useLocalCurrency) {
+        if (useLocalCurrency) {
+          // Switch to USD
           maxPriceInput.value = Math.round(v / approxExchRate * 100) / 100;
           currentStep = usdStep;
           useLocalCurrency = false;
+        } else {
+          // Switch to local
+          maxPriceInput.value = Math.round(v * approxExchRate);
+          currentStep = localStep;
+          useLocalCurrency = true;
         }
+        updateCurrToggleLabel();
       };
     }
+    // Keep a dummy select element reference for the start handler
+    var maxPriceCurrency = { value: useLocalCurrency ? 'local' : 'usd' };
 
     // Voice gender — restore saved preference
     var savedGender = localStorage.getItem('bb_voice_gender') || 'male';
@@ -1415,8 +1421,7 @@
 
     document.getElementById('start-neg-btn').onclick = function() {
       var rawVal = parseFloat(document.getElementById('max-price').value) || 0;
-      var isLocal = maxPriceCurrency && maxPriceCurrency.value === 'local';
-      state.maxPrice = isLocal ? Math.round(rawVal / approxExchRate * 100) / 100 : rawVal;
+      state.maxPrice = useLocalCurrency ? Math.round(rawVal / approxExchRate * 100) / 100 : rawVal;
       showScreen(state.mode === 'text' ? 'text-negotiation' : 'negotiation');
     };
   }
@@ -1941,8 +1946,10 @@
       }
 
       var suggestBtnInner = suggestPhrase
-        ? '<span style="display:block;font-size:18px;font-weight:800;margin-bottom:3px;">' + escHtml(suggestPhrase) + '</span><span style="display:block;font-size:10px;color:var(--muted);font-weight:600;">💰 Name my price · Suggest amount</span>'
-        : '<span style="font-size:13px;font-weight:700;">💰 Name my price · Suggest amount</span>';
+        ? '<span style="display:block;font-size:20px;font-weight:800;margin-bottom:4px;">' + escHtml(suggestPhrase) + '</span>' +
+          '<span style="display:block;font-size:11px;font-weight:700;opacity:0.85;">💰 I have a different price — tap to enter it</span>'
+        : '<span style="display:block;font-size:13px;font-weight:800;">💰 I have a different price</span>' +
+          '<span style="display:block;font-size:10px;font-weight:600;opacity:0.75;margin-top:3px;">Tap to enter your counter-offer amount</span>';
 
       bubble.innerHTML =
         // ── LOCAL language — big, merchant reads this ──
